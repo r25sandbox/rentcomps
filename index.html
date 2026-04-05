@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v2.6</title>
+<title>RentalComp Intelligence v2.7</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -221,6 +221,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v2.7  2026-04-05  Comp estimate card injected into subject popup, updates live with include/exclude
+                     // Commit: add comp estimate to subject pin popup
    v2.6  2026-04-05  Fix ReferenceError: removed orphaned updatePriceBar calls
                      // Commit: fix updatePriceBar ReferenceError breaking map render
    v2.5  2026-04-05  Use map.once(moveend) to guarantee renderVisible after setView
@@ -355,14 +357,15 @@ function placeSubject(s) {
         ${isActive?'<span style="background:#dff2e8;color:#2a7a4a;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:0.04em;">Active</span>':''}
       </div>
       ${s.askingPrice
-        ? `<div style="font-size:10px;color:#9ca3af;">Asking price${s.dom?' · '+s.dom+' DOM':''} · Source: ${s.priceSource==='zillow'?'<span style="color:#006aff;font-weight:600;">Zillow live</span>':'Rentcast'} · Est: $${s.rent.toLocaleString()} · Range: $${s.rentRangeLow.toLocaleString()}–$${s.rentRangeHigh.toLocaleString()}</div>
-           <div style="font-size:10px;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:4px 8px;margin-top:6px;line-height:1.5;">⚠ Verify current price on <a href="${zillowUrl(s.address)}" target="_blank" style="color:#92400e;font-weight:600;text-decoration:underline;">Zillow</a> — may have changed.</div>`
+        ? `<div style="font-size:10px;color:#9ca3af;">${s.dom?s.dom+' DOM · ':''}Source: ${s.priceSource==='zillow'?'<span style="color:#006aff;font-weight:600;">Zillow live</span>':'Rentcast'} · Rentcast est: $${s.rent.toLocaleString()}</div>
+           <div style="font-size:10px;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:4px 8px;margin-top:6px;line-height:1.5;">⚠ Verify on <a href="${zillowUrl(s.address)}" target="_blank" style="color:#92400e;font-weight:600;text-decoration:underline;">Zillow</a> — may have changed.</div>`
         : `<div style="font-size:10px;color:#9ca3af;">Rentcast estimate · Range: $${s.rentRangeLow.toLocaleString()} – $${s.rentRangeHigh.toLocaleString()}</div>`
       }
     </div>
+    <div id="subj-popup-estimate" style="margin-top:8px;"></div>
     <div class="ph-wrap"><div class="ph-title">Price history</div><div id="subj-hist" class="ph-loading">Loading…</div></div>
     ${zillowLink(s.address)}`;
-  subjectMarker.bindPopup(L.popup({maxWidth:290}).setContent(div));
+  subjectMarker.bindPopup(L.popup({maxWidth:300}).setContent(div));
   subjectMarker.on('popupopen',()=>fetchRentHistory(s.address,'subj-hist'));
 }
 
@@ -548,13 +551,10 @@ function updateStats(comps) {
 
 function updateCompEstimate(included, median, minRent, maxRent) {
   const bar = document.getElementById('price-bar-wrap');
-  if(!bar) return;
-  if(!included || !currentSubject) { bar.style.display='none'; return; }
+  if(!included || !currentSubject) { if(bar) bar.style.display='none'; return; }
 
   const subjectPrice = currentSubject.askingPrice || currentSubject.rent;
   const rcEstimate = currentSubject.rent;
-
-  // Weighted estimate: median of included comps, adjusted for subject sqft vs avg comp sqft
   const withSqft = included.filter(c=>c.squareFootage && c.price);
   let compEstimate = median;
   if(withSqft.length && currentSubject.squareFootage) {
@@ -565,10 +565,8 @@ function updateCompEstimate(included, median, minRent, maxRent) {
   const pct = Math.max(0, Math.min(100, ((subjectPrice-minRent)/(maxRent-minRent))*100));
   const color = pct < 33 ? '#16a34a' : pct < 67 ? '#c9a84c' : '#dc2626';
 
-  bar.style.display='block';
-  bar.innerHTML=`
-    <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#9ca3af;font-weight:700;margin-bottom:8px;">Comp estimate · ${included.length} included</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;text-align:center;">
+  const estimateHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;">
       <div style="background:#f4f2ec;border-radius:6px;padding:6px 4px;">
         <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:#9ca3af;margin-bottom:2px;">Asking</div>
         <div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:#c8522a;">$${subjectPrice.toLocaleString()}</div>
@@ -582,16 +580,29 @@ function updateCompEstimate(included, median, minRent, maxRent) {
         <div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:#888;">$${rcEstimate.toLocaleString()}</div>
       </div>
     </div>
-    <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#9ca3af;font-weight:700;margin-bottom:5px;">Position in comp range</div>
-    <div style="position:relative;height:6px;background:#e5e7eb;border-radius:3px;">
-      <div style="position:absolute;left:0;top:0;height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width 0.4s ease;"></div>
-      <div style="position:absolute;top:-3px;left:calc(${pct}% - 5px);width:10px;height:12px;background:${color};border-radius:2px;"></div>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:9px;color:#9ca3af;margin-top:3px;">
-      <span>$${minRent.toLocaleString()}</span>
-      <span style="color:${color};font-weight:700;">$${subjectPrice.toLocaleString()}</span>
-      <span>$${maxRent.toLocaleString()}</span>
+    <div style="margin-top:8px;">
+      <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.07em;color:#9ca3af;font-weight:700;margin-bottom:4px;">Position in comp range · ${included.length} included</div>
+      <div style="position:relative;height:6px;background:#e5e7eb;border-radius:3px;">
+        <div style="position:absolute;left:0;top:0;height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width 0.4s ease;"></div>
+        <div style="position:absolute;top:-3px;left:calc(${pct}% - 5px);width:10px;height:12px;background:${color};border-radius:2px;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:#9ca3af;margin-top:3px;">
+        <span>$${minRent.toLocaleString()}</span>
+        <span style="color:${color};font-weight:700;">$${subjectPrice.toLocaleString()}</span>
+        <span>$${maxRent.toLocaleString()}</span>
+      </div>
     </div>`;
+
+  // Update sidebar bar
+  if(bar) { bar.style.display='block'; bar.innerHTML=`<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#9ca3af;font-weight:700;margin-bottom:8px;">Comp estimate · ${included.length} included</div>`+estimateHTML; }
+
+  // Update subject popup placeholder if open
+  const popupEl = document.getElementById('subj-popup-estimate');
+  if(popupEl) {
+    popupEl.style.cssText='background:#f9f8f5;border-radius:8px;padding:8px;';
+    popupEl.innerHTML = estimateHTML;
+    subjectMarker?.getPopup()?.update();
+  }
 }
 
 function updateCompList(comps) {
