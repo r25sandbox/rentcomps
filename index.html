@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <!-- RentalComp Map
+  v1.7  2026-04-05  Asking price from Rentcast active listing (reliable), Active badge + DOM
   v1.6  2026-04-05  History cache (0 repeat calls), 3 calls → 1 per history fetch
   v1.5  2026-04-05  Removed status/live comps from stats bar, 4 clean stats only
   v1.4  2026-04-05  Stats bar full-width bottom, legend repositioned, toggle stays ☰
@@ -21,7 +22,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v1.6</title>
+<title>RentalComp Intelligence v1.7</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -231,7 +232,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 const MOCK_SUBJECT = {
   address:"10441 E Hillery Dr, Scottsdale, AZ 85255", lat:33.6932, lng:-111.8419,
   bedrooms:4, bathrooms:3, squareFootage:2132, propertyType:"SFR",
-  rent:3650, rentRangeLow:3400, rentRangeHigh:3900
+  rent:3890, rentRangeLow:3400, rentRangeHigh:4390,
+  askingPrice:3650, isActive:true, dom:4
 };
 const MOCK_COMPS = [
   {id:1,formattedAddress:"8800 E Bahia Dr, Scottsdale, AZ 85258",latitude:33.6855,longitude:-111.8940,bedrooms:3,bathrooms:2.5,squareFootage:1720,price:3250,status:"Active",daysOnMarket:7,propertyType:"SFR"},
@@ -284,14 +286,14 @@ async function doSearch() {
       const res=await fetch(`${base}/rentcast/avm/rent/long-term?${params}`);
       if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e?.error||`API error ${res.status}`);}
       const data=await res.json();
-      let propDetails={},zillowPrice=null;
+      let propDetails={},listingData={};
       const [pRes,zRes]=await Promise.allSettled([
         fetch(`${base}/rentcast/properties?address=${encodeURIComponent(addr)}&limit=1`),
         fetch(`${base}/zillow-price?address=${encodeURIComponent(addr)}`)
       ]);
       if(pRes.status==='fulfilled'&&pRes.value.ok){const d=await pRes.value.json();const r=Array.isArray(d)?d[0]:d;propDetails={bedrooms:r?.bedrooms,bathrooms:r?.bathrooms,squareFootage:r?.squareFootage,propertyType:r?.propertyType};}
-      if(zRes.status==='fulfilled'&&zRes.value.ok){const d=await zRes.value.json();zillowPrice=d.price||null;}
-      subject={address:addr,lat:data.latitude,lng:data.longitude,bedrooms:data.bedrooms||propDetails.bedrooms,bathrooms:data.bathrooms||propDetails.bathrooms,squareFootage:data.squareFootage||propDetails.squareFootage,propertyType:data.propertyType||propDetails.propertyType||'SFR',rent:Math.round(data.rent),rentRangeLow:Math.round(data.rentRangeLow),rentRangeHigh:Math.round(data.rentRangeHigh),zillowPrice};
+      if(zRes.status==='fulfilled'&&zRes.value.ok){listingData=await zRes.value.json();}
+      subject={address:addr,lat:data.latitude,lng:data.longitude,bedrooms:data.bedrooms||propDetails.bedrooms,bathrooms:data.bathrooms||propDetails.bathrooms,squareFootage:data.squareFootage||propDetails.squareFootage,propertyType:data.propertyType||propDetails.propertyType||'SFR',rent:Math.round(data.rent),rentRangeLow:Math.round(data.rentRangeLow),rentRangeHigh:Math.round(data.rentRangeHigh),askingPrice:listingData.price||null,isActive:listingData.status==='Active',dom:listingData.daysOnMarket||null};
       comps=(data.comparables||[]).map((c,i)=>({id:i,formattedAddress:c.formattedAddress||c.address,latitude:c.latitude,longitude:c.longitude,bedrooms:c.bedrooms,bathrooms:c.bathrooms,squareFootage:c.squareFootage,price:Math.round(c.price),status:c.status||'Active',daysOnMarket:c.daysOnMarket||null,propertyType:c.propertyType||'SFR'}));
       setStatus('ok',`Live · ${comps.length} comps`);
     } else {
@@ -313,8 +315,8 @@ function placeSubject(s) {
   const bedsStr=s.bedrooms?`${s.bedrooms} bd / ${s.bathrooms} ba`:'';
   const sqftStr=s.squareFootage?s.squareFootage.toLocaleString()+' sqft':'';
   const ppsf=(s.squareFootage&&s.rent)?'$'+(s.rent/s.squareFootage).toFixed(2)+'/sqft':'';
-  const displayPrice=s.zillowPrice||s.rent;
-  const priceLabel=s.zillowPrice?'Zillow (live)':'Rentcast estimate';
+  const displayPrice=s.askingPrice||s.rent;
+  const isActive=s.isActive;
   const div=document.createElement('div');
   div.innerHTML=`
     <div class="popup-rent">Subject Property</div>
@@ -324,10 +326,13 @@ function placeSubject(s) {
     <div style="margin-top:8px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
         <span style="font-size:17px;font-weight:600;color:#c8522a;font-family:'DM Mono',monospace;">$${displayPrice.toLocaleString()}/mo</span>
-        ${s.zillowPrice?'<span style="background:#dff2e8;color:#2a7a4a;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;">Active</span>':''}
+        ${isActive?'<span style="background:#dff2e8;color:#2a7a4a;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:0.04em;">Active</span>':''}
       </div>
-      <div style="font-size:10px;color:#9ca3af;">${priceLabel} · Range: $${s.rentRangeLow.toLocaleString()} – $${s.rentRangeHigh.toLocaleString()}</div>
-      ${s.zillowPrice?`<div style="font-size:10px;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:4px 8px;margin-top:6px;line-height:1.5;">⚠ Prices change often — <a href="${zillowUrl(s.address)}" target="_blank" style="color:#92400e;font-weight:600;text-decoration:underline;">verify on Zillow</a>.</div>`:''}
+      ${s.askingPrice
+        ? `<div style="font-size:10px;color:#9ca3af;">Asking price${s.dom?' · '+s.dom+' DOM':''} · Rentcast est: $${s.rent.toLocaleString()} · Range: $${s.rentRangeLow.toLocaleString()}–$${s.rentRangeHigh.toLocaleString()}</div>
+           <div style="font-size:10px;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:4px 8px;margin-top:6px;line-height:1.5;">⚠ Verify current price on <a href="${zillowUrl(s.address)}" target="_blank" style="color:#92400e;font-weight:600;text-decoration:underline;">Zillow</a> — may have changed.</div>`
+        : `<div style="font-size:10px;color:#9ca3af;">Rentcast estimate · Range: $${s.rentRangeLow.toLocaleString()} – $${s.rentRangeHigh.toLocaleString()}</div>`
+      }
     </div>
     <div class="ph-wrap"><div class="ph-title">Price history</div><div id="subj-hist" class="ph-loading">Loading…</div></div>
     ${zillowLink(s.address)}`;
@@ -450,9 +455,14 @@ function updateSubjectCard(s) {
   document.getElementById('sc-addr').textContent=s.address;
   const meta=[s.bedrooms?`${s.bedrooms} bd`:null,s.bathrooms?`${s.bathrooms} ba`:null,s.squareFootage?`${s.squareFootage.toLocaleString()} sqft`:null,s.propertyType||null].filter(Boolean).join(' · ');
   document.getElementById('sc-meta').textContent=meta;
-  const displayPrice=s.zillowPrice||s.rent;
+  const displayPrice=s.askingPrice||s.rent;
   document.getElementById('sc-rent').textContent='$'+displayPrice.toLocaleString()+'/mo';
-  document.getElementById('sc-range').textContent=`Est. range: $${s.rentRangeLow.toLocaleString()} – $${s.rentRangeHigh.toLocaleString()}`;
+  const rangeEl=document.getElementById('sc-range');
+  if(s.askingPrice&&s.isActive) {
+    rangeEl.innerHTML='<span style="background:#dff2e8;color:#2a7a4a;font-size:9px;font-weight:700;padding:1px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:0.04em;vertical-align:middle;">Active</span>'+(s.dom?` <span style="opacity:0.5;">${s.dom} DOM</span>`:'');
+  } else {
+    rangeEl.textContent=`Est. range: $${s.rentRangeLow.toLocaleString()} – $${s.rentRangeHigh.toLocaleString()}`;
+  }
   document.getElementById('subject-card').classList.add('visible');
 }
 
