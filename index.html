@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v2.8</title>
+<title>RentalComp Intelligence v2.9</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -221,7 +221,9 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v2.8  2026-04-05  Sort comps high→low, color logic = asking vs comp est gap, signal label added
+   v2.9  2026-04-05  Fix desktop popup estimate: recalculate+inject on popupopen, not just on stats update
+                     // Commit: fix comp estimate missing in subject popup on desktop
+   v2.8  2026-04-05  Sort comps high→low, color = asking vs comp est gap, signal label
                      // Commit: high-to-low sort, investor color logic, well-priced signal
    v2.7  2026-04-05  Comp estimate card in subject popup, live updates with include/exclude
                      // Commit: add comp estimate to subject pin popup
@@ -368,7 +370,28 @@ function placeSubject(s) {
     <div class="ph-wrap"><div class="ph-title">Price history</div><div id="subj-hist" class="ph-loading">Loading…</div></div>
     ${zillowLink(s.address)}`;
   subjectMarker.bindPopup(L.popup({maxWidth:300}).setContent(div));
-  subjectMarker.on('popupopen',()=>fetchRentHistory(s.address,'subj-hist'));
+  subjectMarker.on('popupopen',()=>{
+    fetchRentHistory(s.address,'subj-hist');
+    // Inject estimate in case popup opens after stats already calculated
+    const bounds=map.getBounds();
+    const showActive=document.getElementById('cb-active').checked;
+    const showClosed=document.getElementById('cb-closed').checked;
+    const visible=allComps.filter(c=>{
+      if(!c.latitude||!c.longitude) return false;
+      const inBounds=bounds.contains([c.latitude,c.longitude]);
+      const isActive=c.status==='Active';
+      return inBounds&&((isActive&&showActive)||(!isActive&&showClosed));
+    });
+    if(visible.length) {
+      const included=visible.filter(c=>!excluded.has(c.id));
+      if(included.length) {
+        const rents=included.map(c=>c.price).sort((a,b)=>a-b);
+        const mid=Math.floor(rents.length/2);
+        const median=rents.length%2===0?Math.round((rents[mid-1]+rents[mid])/2):rents[mid];
+        updateCompEstimate(included,median,Math.min(...rents),Math.max(...rents));
+      }
+    }
+  });
 }
 
 // ── Excluded comps set ──
