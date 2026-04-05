@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v2.5</title>
+<title>RentalComp Intelligence v2.6</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -221,6 +221,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v2.6  2026-04-05  Fix ReferenceError: removed orphaned updatePriceBar calls
+                     // Commit: fix updatePriceBar ReferenceError breaking map render
    v2.5  2026-04-05  Use map.once(moveend) to guarantee renderVisible after setView
                      // Commit: fix comps not rendering - use map.once for reliable render
    v2.4  2026-04-05  Fix comps: add all immediately, bounds filter on pan/zoom only
@@ -531,7 +533,7 @@ function updateStats(comps) {
   const included = comps.filter(c=>!excluded.has(c.id));
   const excCount = comps.length - included.length;
   document.getElementById('s-count').textContent = included.length + (excCount ? ` (${excCount} excl.)` : '');
-  if(!included.length){['s-median','s-range-stat','s-sqft'].forEach(id=>document.getElementById(id).textContent='—');updatePriceBar(null,null,null);updateCompEstimate(null);return;}
+  if(!included.length){['s-median','s-range-stat','s-sqft'].forEach(id=>document.getElementById(id).textContent='—');updateCompEstimate(null);return;}
   const rents=included.map(c=>c.price).sort((a,b)=>a-b);
   const mid=Math.floor(rents.length/2);
   const median=rents.length%2===0?Math.round((rents[mid-1]+rents[mid])/2):rents[mid];
@@ -541,7 +543,6 @@ function updateStats(comps) {
   document.getElementById('s-sqft').textContent=ws.length?'$'+(ws.reduce((a,c)=>a+(c.price/c.squareFootage),0)/ws.length).toFixed(2):'—';
   document.getElementById('stats-strip').classList.add('visible');
   const subjectPrice = currentSubject ? (currentSubject.askingPrice||currentSubject.rent) : null;
-  updatePriceBar(subjectPrice, Math.min(...rents), Math.max(...rents));
   updateCompEstimate(included, median, Math.min(...rents), Math.max(...rents));
 }
 
