@@ -1,29 +1,22 @@
 <!DOCTYPE html>
 <!-- RentalComp Map
+  v1.1  2026-04-05  worker URL hardcoded, proxy field hidden, version leak fixed
   v1.0  2026-04-05  Cloudflare Worker proxy: Rentcast key server-side, Zillow price scraping
-  v0.9  2026-04-05  price staleness warning with Zillow link on active subject
-  v0.8  2026-04-05  history pulls from 3 sources in parallel
-  v0.7  2026-04-05  asking price no rounding, history 10 events, version log added
-  v0.6  history two-rows-per-listing, subject Active badge + history section
-  v0.5  subject beds/baths from property lookup, rental listings history endpoint
-  v0.4  lazy-load price history on click, days-between, abbreviated statuses
-  v0.3  SFR only, Zillow link, viewport-driven comp filter
-  v0.2  mock data, status checkboxes, map viewport filter
-  v0.1  initial prototype
--->
-  v0.7  2026-04-05  asking price no rounding, history 10 events, version log added
-  v0.6  history two-rows-per-listing, subject Active badge + history section
-  v0.5  subject beds/baths from property lookup, rental listings history endpoint
-  v0.4  lazy-load price history on click, days-between, abbreviated statuses
-  v0.3  SFR only, Zillow link, viewport-driven comp filter
-  v0.2  mock data, status checkboxes, map viewport filter
+  v0.9  price staleness warning with Zillow link
+  v0.8  history 3 sources in parallel
+  v0.7  asking price no rounding, history 10 events, version log
+  v0.6  history two-rows-per-listing, subject Active badge + history
+  v0.5  subject beds/baths from property lookup
+  v0.4  lazy-load price history, days-between, abbreviated statuses
+  v0.3  SFR only, Zillow link, viewport-driven filter
+  v0.2  mock data, status checkboxes, viewport filter
   v0.1  initial prototype
 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Map v1.0</title>
+<title>RentalComp Map v1.1</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -345,16 +338,15 @@
   <div class="sidebar">
     <div class="sidebar-inner">
 
-      <div class="mock-notice" id="demo-notice">
-        <strong>Demo mode:</strong> Enter your proxy URL below to load live data. Leave blank to explore with mock data.
+      <div class="mock-notice" id="demo-notice" style="display:none;">
+        <strong>Demo mode:</strong> No proxy configured — showing mock data.
       </div>
 
-      <div class="section-label">Proxy URL</div>
-      <div class="api-row">
-        <input type="text" id="api-key" placeholder="https://your-worker.workers.dev" />
-      </div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:16px;">
-        Your Cloudflare Worker URL — API key stays server-side, never in the browser
+      <div id="proxy-input-wrap" style="display:none;">
+        <div class="section-label">Proxy URL</div>
+        <div class="api-row">
+          <input type="text" id="api-key" placeholder="https://your-worker.workers.dev" value="https://rentalcomp-proxy.alik-levin.workers.dev" />
+        </div>
       </div>
 
       <div class="section-label">Subject Property</div>
@@ -903,12 +895,14 @@ function showUI() {
   document.getElementById('legend').style.display = 'flex';
 }
 
-// ── Enter key on address ──
+// ── Enter key on address + auto-search on load ──
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
   document.getElementById('addr-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') doSearch();
   });
+  // Auto-search default address on load
+  setTimeout(doSearch, 800);
 });
 </script>
 </body>
