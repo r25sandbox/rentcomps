@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v2.4</title>
+<title>RentalComp Intelligence v2.5</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -221,7 +221,9 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v2.4  2026-04-05  Fix comps/centering: add all comps immediately, bounds filter on pan/zoom only
+   v2.5  2026-04-05  Use map.once(moveend) to guarantee renderVisible after setView
+                     // Commit: fix comps not rendering - use map.once for reliable render
+   v2.4  2026-04-05  Fix comps: add all immediately, bounds filter on pan/zoom only
                      // Commit: fix comps not rendering after search
    v2.3  2026-04-05  Fix render order: setView before renderVisible, 300ms settle delay
                      // Commit: fix comps not showing + map not centering after search
@@ -322,20 +324,7 @@ async function doSearch() {
     placeSubject(subject); placeComps(comps); updateSubjectCard(subject);
     document.getElementById('filter-row').style.display='flex';
     document.getElementById('legend-float').classList.add('visible');
-
-    // Add ALL comps to map immediately — bounds filter kicks in on subsequent pan/zoom
-    const showActive=document.getElementById('cb-active').checked;
-    const showClosed=document.getElementById('cb-closed').checked;
-    const initialVisible=[];
-    allComps.forEach(c=>{
-      const m=compMarkers[c.id]; if(!m) return;
-      const isActive=c.status==='Active';
-      const ok=(isActive&&showActive)||(!isActive&&showClosed);
-      if(ok){ map.addLayer(m); initialVisible.push(c); }
-    });
-    updateStats(initialVisible);
-    updateCompList(initialVisible);
-
+    map.once('moveend', ()=>{ renderVisible(); });
     map.setView([subject.lat,subject.lng],15);
     panelOpen=true;
     const p=document.getElementById('panel');
