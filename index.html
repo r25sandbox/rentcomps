@@ -3,8 +3,28 @@
 <head>
 <!--
   RentalComp Intelligence — rental-comp-map.html
-  v1.9  2026-04-05  Panel starts collapsed via CSS (no flash), open/collapsed class pattern
-  v1.8  2026-04-05  Popup width capped mobile, Zillow scrape + Rentcast fallback, price source label
+  v2.0  2026-04-05  Default address → 10394 E Morning Star Dr (verified registered rental)
+  v1.9  2026-04-05  Panel starts collapsed via CSS (no flash), open/collapsed class fix
+  v1.8  2026-04-05  Popup width capped mobile, Zillow scrape attempted → 403 blocked,
+                    falls back to Rentcast active listing. Price source labeled in popup.
+  v1.7  2026-04-05  Asking price from Rentcast active listing, Active badge + DOM
+  v1.6  2026-04-05  History cache, 3 calls → 1 per history fetch
+  v1.5  2026-04-05  Removed status from stats bar, 4 clean stats
+  v1.4  2026-04-05  Stats bar full-width bottom, legend in bar, toggle stays ☰
+  v1.3  2026-04-05  Map-first layout: floating collapsible panel
+  v1.2  2026-04-05  Navy/gold branding, RentalComp Intelligence header
+  v1.1  2026-04-05  Worker URL hardcoded, proxy hidden, auto-search on load
+  v1.0  2026-04-05  Cloudflare Worker proxy
+  v0.9  Price staleness warning
+  v0.8  History 3 sources parallel
+  v0.7  Asking price no rounding, history 10 events, version log
+  v0.6  History two-rows-per-listing, Active badge
+  v0.5  Subject beds/baths from property lookup
+  v0.4  Lazy-load price history, days-between, abbreviated statuses
+  v0.3  SFR only, Zillow link, viewport filter
+  v0.2  Mock data, status checkboxes
+  v0.1  Initial prototype
+-->
   v1.7  2026-04-05  Asking price from Rentcast active listing, Active badge + DOM
   v1.6  2026-04-05  History cache, 3 calls → 1 per history fetch
   v1.5  2026-04-05  Removed status from stats bar, 4 clean stats
@@ -25,7 +45,7 @@
 -->
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v1.9</title>
+<title>RentalComp Intelligence v2.0</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -189,7 +209,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
   <!-- Floating panel -->
   <div class="panel collapsed" id="panel">
     <div class="panel-top">
-      <input type="text" id="addr-input" placeholder="Enter property address…" value="10441 E Hillery Dr, Scottsdale, AZ 85255" />
+      <input type="text" id="addr-input" placeholder="Enter property address…" value="10394 E Morning Star Dr, Scottsdale, AZ 85255" />
       <button class="btn-go" id="search-btn" onclick="doSearch()">Go</button>
       <div class="btn-toggle" id="toggle-btn" onclick="togglePanel()">☰</div>
     </div>
@@ -240,8 +260,19 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v1.9  2026-04-05  Panel starts collapsed via CSS, open/collapsed class pattern
-   v1.8  2026-04-05  Popup width capped mobile, Zillow scrape + Rentcast fallback, price source label
+   v2.0  2026-04-05  Default address → 10394 E Morning Star Dr (verified rental)
+   v1.9  2026-04-05  Panel starts collapsed via CSS, open/collapsed class fix
+   v1.8  2026-04-05  Zillow scrape confirmed blocked (403), Rentcast fallback for asking price
+   v1.7  2026-04-05  Asking price from Rentcast active listing, Active badge + DOM
+   v1.6  2026-04-05  History cache, 3 calls → 1 per history fetch
+   v1.5  2026-04-05  4 clean stats in bottom bar
+   v1.4  2026-04-05  Stats bar full-width, legend in bar, toggle stays ☰
+   v1.3  2026-04-05  Map-first layout, floating collapsible panel
+   v1.2  2026-04-05  Navy/gold branding
+   v1.1  2026-04-05  Worker URL hardcoded, auto-search on load
+   v1.0  2026-04-05  Cloudflare Worker proxy
+   v0.1–v0.9  See HTML comment for full history
+*/
    v1.7  2026-04-05  Asking price from Rentcast active listing, Active badge + DOM
    v1.6  2026-04-05  History cache, 3 calls → 1 per history fetch
    v1.5  2026-04-05  Removed status from stats bar, 4 clean stats
@@ -261,10 +292,10 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
    v0.1  Initial prototype
 */
 const MOCK_SUBJECT = {
-  address:"10441 E Hillery Dr, Scottsdale, AZ 85255", lat:33.6932, lng:-111.8419,
-  bedrooms:4, bathrooms:3, squareFootage:2132, propertyType:"SFR",
-  rent:3890, rentRangeLow:3400, rentRangeHigh:4390,
-  askingPrice:3650, isActive:true, dom:4
+  address:"10394 E Morning Star Dr, Scottsdale, AZ 85255", lat:33.6891, lng:-111.8461,
+  bedrooms:4, bathrooms:3, squareFootage:2200, propertyType:"SFR",
+  rent:3800, rentRangeLow:3500, rentRangeHigh:4100,
+  askingPrice:3800, isActive:true, dom:7
 };
 const MOCK_COMPS = [
   {id:1,formattedAddress:"8800 E Bahia Dr, Scottsdale, AZ 85258",latitude:33.6855,longitude:-111.8940,bedrooms:3,bathrooms:2.5,squareFootage:1720,price:3250,status:"Active",daysOnMarket:7,propertyType:"SFR"},
