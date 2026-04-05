@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v2.7</title>
+<title>RentalComp Intelligence v2.8</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -221,7 +221,9 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v2.7  2026-04-05  Comp estimate card injected into subject popup, updates live with include/exclude
+   v2.8  2026-04-05  Sort comps high→low, color logic = asking vs comp est gap, signal label added
+                     // Commit: high-to-low sort, investor color logic, well-priced signal
+   v2.7  2026-04-05  Comp estimate card in subject popup, live updates with include/exclude
                      // Commit: add comp estimate to subject pin popup
    v2.6  2026-04-05  Fix ReferenceError: removed orphaned updatePriceBar calls
                      // Commit: fix updatePriceBar ReferenceError breaking map render
@@ -562,8 +564,16 @@ function updateCompEstimate(included, median, minRent, maxRent) {
     compEstimate = Math.round(avgPpsf * currentSubject.squareFootage);
   }
 
+  // Color = how asking compares to comp estimate (investor logic)
+  // Green = asking ≤ comp est (property will rent at or above asking = good investment)
+  // Amber = asking slightly above comp est (10-15% over)
+  // Red = asking well above comp est (overpriced, will sit or need reduction)
+  const gap = subjectPrice - compEstimate;
+  const gapPct = compEstimate > 0 ? (gap / compEstimate) * 100 : 0;
+  const color = gapPct <= 5 ? '#16a34a' : gapPct <= 15 ? '#c9a84c' : '#dc2626';
+  const signal = gapPct <= 5 ? 'Well priced' : gapPct <= 15 ? 'Slightly above comps' : 'Above comp range';
+
   const pct = Math.max(0, Math.min(100, ((subjectPrice-minRent)/(maxRent-minRent))*100));
-  const color = pct < 33 ? '#16a34a' : pct < 67 ? '#c9a84c' : '#dc2626';
 
   const estimateHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;">
@@ -581,7 +591,10 @@ function updateCompEstimate(included, median, minRent, maxRent) {
       </div>
     </div>
     <div style="margin-top:8px;">
-      <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.07em;color:#9ca3af;font-weight:700;margin-bottom:4px;">Position in comp range · ${included.length} included</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.07em;color:#9ca3af;font-weight:700;">Asking vs comp range · ${included.length} included</div>
+        <div style="font-size:9px;font-weight:700;color:${color};">${signal}</div>
+      </div>
       <div style="position:relative;height:6px;background:#e5e7eb;border-radius:3px;">
         <div style="position:absolute;left:0;top:0;height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width 0.4s ease;"></div>
         <div style="position:absolute;top:-3px;left:calc(${pct}% - 5px);width:10px;height:12px;background:${color};border-radius:2px;"></div>
@@ -594,14 +607,17 @@ function updateCompEstimate(included, median, minRent, maxRent) {
     </div>`;
 
   // Update sidebar bar
-  if(bar) { bar.style.display='block'; bar.innerHTML=`<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#9ca3af;font-weight:700;margin-bottom:8px;">Comp estimate · ${included.length} included</div>`+estimateHTML; }
+  if(bar) {
+    bar.style.display='block';
+    bar.innerHTML=`<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#9ca3af;font-weight:700;margin-bottom:8px;">Comp estimate · ${included.length} included</div>`+estimateHTML;
+  }
 
-  // Update subject popup placeholder if open
+  // Update subject popup if open
   const popupEl = document.getElementById('subj-popup-estimate');
   if(popupEl) {
-    popupEl.style.cssText='background:#f9f8f5;border-radius:8px;padding:8px;';
-    popupEl.innerHTML = estimateHTML;
-    subjectMarker?.getPopup()?.update();
+    popupEl.style.cssText='background:#f9f8f5;border-radius:8px;padding:8px;margin-top:8px;';
+    popupEl.innerHTML=estimateHTML;
+    if(subjectMarker && subjectMarker.getPopup && subjectMarker.getPopup()) subjectMarker.getPopup().update();
   }
 }
 
@@ -610,8 +626,8 @@ function updateCompList(comps) {
   const included=comps.filter(c=>!excluded.has(c.id));
   const excl=comps.filter(c=>excluded.has(c.id));
   if(!comps.length){wrap.innerHTML='<div class="empty-state">No comps in view — try zooming out.</div>';return;}
-  const sorted=[...included].sort((a,b)=>a.price-b.price);
-  const exclSorted=[...excl].sort((a,b)=>a.price-b.price);
+  const sorted=[...included].sort((a,b)=>b.price-a.price);
+  const exclSorted=[...excl].sort((a,b)=>b.price-a.price);
 
   const renderItem = (c, isExcluded) => {
     const isActive=c.status==='Active';
