@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v2.9</title>
+<title>RentalComp Intelligence v3.0</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -221,7 +221,9 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v2.9  2026-04-05  Fix desktop popup estimate: recalculate+inject on popupopen, not just on stats update
+   v3.0  2026-04-05  Slider: remove label above, marker always asking-red, included count red <5
+                     // Commit: cleaner slider - asking-red marker, red warning when <5 comps
+   v2.9  2026-04-05  Fix desktop popup estimate: recalculate on popupopen
                      // Commit: fix comp estimate missing in subject popup on desktop
    v2.8  2026-04-05  Sort comps high→low, color = asking vs comp est gap, signal label
                      // Commit: high-to-low sort, investor color logic, well-priced signal
@@ -615,16 +617,16 @@ function updateCompEstimate(included, median, minRent, maxRent) {
     </div>
     <div style="margin-top:8px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.07em;color:#9ca3af;font-weight:700;">Asking vs comp range · ${included.length} included</div>
-        <div style="font-size:9px;font-weight:700;color:${color};">${signal}</div>
+        <span style="font-size:9px;font-weight:700;color:${included.length<5?'#dc2626':'#9ca3af'};">${included.length} included</span>
+        <span style="font-size:9px;font-weight:700;color:${color};">${signal}</span>
       </div>
       <div style="position:relative;height:6px;background:#e5e7eb;border-radius:3px;">
         <div style="position:absolute;left:0;top:0;height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width 0.4s ease;"></div>
-        <div style="position:absolute;top:-3px;left:calc(${pct}% - 5px);width:10px;height:12px;background:${color};border-radius:2px;"></div>
+        <div style="position:absolute;top:-3px;left:calc(${pct}% - 5px);width:10px;height:12px;background:#c8522a;border-radius:2px;"></div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:9px;color:#9ca3af;margin-top:3px;">
         <span>$${minRent.toLocaleString()}</span>
-        <span style="color:${color};font-weight:700;">$${subjectPrice.toLocaleString()}</span>
+        <span style="color:#c8522a;font-weight:700;">$${subjectPrice.toLocaleString()}</span>
         <span>$${maxRent.toLocaleString()}</span>
       </div>
     </div>`;
@@ -632,7 +634,7 @@ function updateCompEstimate(included, median, minRent, maxRent) {
   // Update sidebar bar
   if(bar) {
     bar.style.display='block';
-    bar.innerHTML=`<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#9ca3af;font-weight:700;margin-bottom:8px;">Comp estimate · ${included.length} included</div>`+estimateHTML;
+    bar.innerHTML=estimateHTML;
   }
 
   // Update subject popup if open
