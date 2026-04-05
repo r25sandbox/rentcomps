@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<!-- RentalComp Map
+  v1.0  2026-04-05  Cloudflare Worker proxy: Rentcast key server-side, Zillow price scraping
+  v0.9  2026-04-05  price staleness warning with Zillow link on active subject
+  v0.8  2026-04-05  history pulls from 3 sources in parallel
+  v0.7  2026-04-05  asking price no rounding, history 10 events, version log added
+  v0.6  history two-rows-per-listing, subject Active badge + history section
+  v0.5  subject beds/baths from property lookup, rental listings history endpoint
+  v0.4  lazy-load price history on click, days-between, abbreviated statuses
+  v0.3  SFR only, Zillow link, viewport-driven comp filter
+  v0.2  mock data, status checkboxes, map viewport filter
+  v0.1  initial prototype
+-->
+  v0.7  2026-04-05  asking price no rounding, history 10 events, version log added
+  v0.6  history two-rows-per-listing, subject Active badge + history section
+  v0.5  subject beds/baths from property lookup, rental listings history endpoint
+  v0.4  lazy-load price history on click, days-between, abbreviated statuses
+  v0.3  SFR only, Zillow link, viewport-driven comp filter
+  v0.2  mock data, status checkboxes, map viewport filter
+  v0.1  initial prototype
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RentalComp Map v1.0</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f6f2;
+    --surface: #ffffff;
+    --surface2: #f0ede6;
+    --border: #e0dbd0;
+    --text: #1a1814;
+    --text2: #6b6660;
+    --text3: #9c9690;
+    --accent: #c8522a;
+    --accent2: #1a4f8c;
+    --closed: #5c35a0;
+    --green: #2a7a4a;
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+    --radius: 10px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--text);
+    color: #fff;
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  header .logo {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #fff;
+  }
+  header .logo span { color: var(--accent); }
+  header .tagline {
+    font-size: 12px;
+    color: rgba(255,255,255,0.45);
+    font-weight: 300;
+    margin-left: auto;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* ── Layout ── */
+  .app { display: flex; flex: 1; height: calc(100vh - 52px); }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 360px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-inner { flex: 1; overflow-y: auto; padding: 20px; }
+
+  /* ── Search ── */
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+
+  .api-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .api-row input {
+    flex: 1;
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    color: var(--text2);
+    outline: none;
+    transition: border 0.15s;
+  }
+  .api-row input:focus { border-color: var(--accent2); }
+
+  .addr-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .addr-row input {
+    flex: 1;
+    font-family: var(--font);
+    font-size: 13px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    transition: border 0.15s;
+  }
+  .addr-row input:focus { border-color: var(--accent2); }
+
+  button.primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 10px 16px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, transform 0.1s;
+  }
+  button.primary:hover { background: #b04520; }
+  button.primary:active { transform: scale(0.97); }
+  button.primary:disabled { background: #ccc; cursor: not-allowed; }
+
+  /* ── Subject card ── */
+  .subject-card {
+    background: var(--text);
+    color: #fff;
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .subject-card.visible { display: block; }
+  .subject-card .s-addr { font-size: 13px; font-weight: 500; margin-bottom: 6px; line-height: 1.4; }
+  .subject-card .s-meta { font-size: 12px; color: rgba(255,255,255,0.55); }
+  .subject-card .s-rent {
+    font-size: 22px;
+    font-weight: 600;
+    color: #fff;
+    margin-top: 10px;
+    font-family: var(--mono);
+  }
+  .subject-card .s-rent-label { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 2px; }
+  .subject-card .s-range { font-size: 13px; color: rgba(255,255,255,0.7); margin-top: 4px; }
+
+  /* ── Stats ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .stat-box {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+  }
+  .stat-box .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); font-weight: 600; margin-bottom: 4px; }
+  .stat-box .val { font-size: 18px; font-weight: 500; font-family: var(--mono); color: var(--text); }
+  .stat-box .val.small { font-size: 14px; }
+
+  /* ── Filters ── */
+  .filter-row {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .filter-row .flbl { font-size: 12px; color: var(--text2); font-weight: 500; }
+  .cb-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text2); cursor: pointer; user-select: none; }
+  .cb-item input[type=checkbox] { cursor: pointer; width: 15px; height: 15px; accent-color: var(--accent2); }
+
+  /* ── Comp list ── */
+  .comp-list-header {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+  .comp-item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    background: var(--surface);
+  }
+  .comp-item:hover { border-color: var(--accent2); background: #f4f8ff; }
+  .comp-item.active-listing { border-left: 3px solid var(--accent2); }
+  .comp-item.closed-listing { border-left: 3px solid var(--closed); }
+  .comp-item .ci-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+  .comp-item .ci-rent { font-size: 16px; font-weight: 600; font-family: var(--mono); color: var(--text); }
+  .comp-item .ci-addr { font-size: 12px; color: var(--text2); line-height: 1.4; margin-bottom: 4px; }
+  .comp-item .ci-meta { font-size: 11px; color: var(--text3); }
+  .badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 20px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    margin-left: 8px;
+  }
+  .badge-active { background: #dff2e8; color: var(--green); }
+  .badge-closed { background: #ede9f7; color: var(--closed); }
+
+  /* ── Map ── */
+  #map { flex: 1; }
+
+  /* ── Status bar ── */
+  .status-bar {
+    background: var(--surface2);
+    border-top: 1px solid var(--border);
+    padding: 8px 20px;
+    font-size: 12px;
+    color: var(--text3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+  .status-dot.loading { background: #f0a500; animation: pulse 1s infinite; }
+  .status-dot.ok { background: var(--green); }
+  .status-dot.error { background: var(--accent); }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── Empty state ── */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text3);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .empty-state .big { font-size: 32px; margin-bottom: 8px; }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    gap: 14px;
+    padding: 10px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 12px;
+    color: var(--text2);
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .ldot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: middle; }
+
+  /* ── Popup ── */
+  .leaflet-popup-content-wrapper { border-radius: 10px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important; border: 1px solid var(--border); }
+  .leaflet-popup-content { margin: 14px 16px !important; font-family: 'DM Sans', sans-serif !important; }
+  .popup-rent { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 4px; font-family: 'DM Mono', monospace; }
+  .popup-addr { font-size: 13px; color: var(--text2); margin-bottom: 8px; line-height: 1.4; }
+  .popup-row { font-size: 12px; color: var(--text3); margin-bottom: 3px; }
+  .popup-badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 20px; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .leaflet-popup-content { min-width: 240px !important; }
+  .ph-wrap { margin-top: 10px; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+  .ph-title { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #9ca3af; margin-bottom: 7px; }
+  .ph-loading { font-size: 12px; color: #9ca3af; }
+  .ph-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .ph-table td { padding: 4px 0; vertical-align: top; }
+  .ph-table td:first-child { color: #9ca3af; width: 76px; }
+  .ph-table td:nth-child(2) { color: #374151; }
+  .ph-table td:last-child { text-align: right; font-family: 'DM Mono', monospace; font-weight: 500; color: #111827; }
+  .ph-listed { color: #16a34a !important; font-weight: 600; }
+  .ph-removed { color: #dc2626 !important; font-weight: 600; }
+  .ph-changed { color: #d97706 !important; font-weight: 600; }
+  .ph-none { font-size: 12px; color: #9ca3af; }
+
+  /* ── MOCK notice ── */
+  .mock-notice {
+    background: #fff8e6;
+    border: 1px solid #f0c060;
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #7a5c00;
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+  .mock-notice strong { font-weight: 600; }
+
+  /* Divider */
+  .divider { height: 1px; background: var(--border); margin: 16px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Rental<span>Comp</span> Map</div>
+  <div class="tagline">Investment Property Intelligence</div>
+</header>
+
+<div class="app">
+
+  <!-- ── Sidebar ── -->
+  <div class="sidebar">
+    <div class="sidebar-inner">
+
+      <div class="mock-notice" id="demo-notice">
+        <strong>Demo mode:</strong> Enter your proxy URL below to load live data. Leave blank to explore with mock data.
+      </div>
+
+      <div class="section-label">Proxy URL</div>
+      <div class="api-row">
+        <input type="text" id="api-key" placeholder="https://your-worker.workers.dev" />
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:16px;">
+        Your Cloudflare Worker URL — API key stays server-side, never in the browser
+      </div>
+
+      <div class="section-label">Subject Property</div>
+      <div class="addr-row">
+        <input type="text" id="addr-input" placeholder="Enter property address…" value="10441 E Hillery Dr, Scottsdale, AZ 85255" />
+        <button class="primary" id="search-btn" onclick="doSearch()">Go</button>
+      </div>
+
+      <!-- Subject summary card -->
+      <div class="subject-card" id="subject-card">
+        <div class="s-addr" id="sc-addr">—</div>
+        <div class="s-meta" id="sc-meta">—</div>
+        <div class="s-rent" id="sc-rent">—</div>
+        <div class="s-rent-label">Estimated rent</div>
+        <div class="s-range" id="sc-range">—</div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid" id="stats-grid" style="display:none;">
+        <div class="stat-box"><div class="lbl">Comps in view</div><div class="val" id="s-count">—</div></div>
+        <div class="stat-box"><div class="lbl">Median rent</div><div class="val" id="s-median">—</div></div>
+        <div class="stat-box"><div class="lbl">Range</div><div class="val small" id="s-range-stat">—</div></div>
+        <div class="stat-box"><div class="lbl">Avg $/sqft</div><div class="val" id="s-sqft">—</div></div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-row" id="filter-row" style="display:none;">
+        <span class="flbl">Show:</span>
+        <label class="cb-item">
+          <input type="checkbox" id="cb-active" checked onchange="renderVisible()" />
+          <span style="color:var(--accent2);">● Active</span>
+        </label>
+        <label class="cb-item">
+          <input type="checkbox" id="cb-closed" checked onchange="renderVisible()" />
+          <span style="color:var(--closed);">● Closed</span>
+        </label>
+      </div>
+
+      <!-- Comp list -->
+      <div id="comp-list-wrap">
+        <div class="empty-state">
+          <div class="big">🗺</div>
+          Enter an address above and click Go to find rental comps
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Legend -->
+    <div class="legend" id="legend" style="display:none;">
+      <span><span class="ldot" style="background:#c8522a;"></span>Subject</span>
+      <span><span class="ldot" style="background:#1a4f8c;"></span>Active</span>
+      <span><span class="ldot" style="background:#5c35a0;"></span>Closed</span>
+    </div>
+
+    <!-- Status bar -->
+    <div class="status-bar">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-msg">Ready — enter an address to begin</span>
+    </div>
+  </div>
+
+  <!-- ── Map ── -->
+  <div id="map"></div>
+</div>
+
+<script>
+// ── Mock data (used when no API key) ──
+const MOCK_SUBJECT = {
+  address: "10441 E Hillery Dr, Scottsdale, AZ 85255",
+  lat: 33.6932, lng: -111.8419,
+  bedrooms: 4, bathrooms: 3, squareFootage: 2132,
+  propertyType: "SFR",
+  rent: 3650,
+  rentRangeLow: 3400,
+  rentRangeHigh: 3900
+};
+
+const MOCK_COMPS = [
+  { id:1,  formattedAddress:"8800 E Bahia Dr, Scottsdale, AZ 85258",         latitude:33.6855, longitude:-111.8940, bedrooms:3, bathrooms:2.5, squareFootage:1720, price:3250, status:"Active",   daysOnMarket:7,  propertyType:"SFR" },
+  { id:2,  formattedAddress:"9244 E Raintree Dr, Scottsdale, AZ 85258",      latitude:33.6940, longitude:-111.8900, bedrooms:3, bathrooms:2,   squareFootage:1480, price:2820, status:"Inactive", daysOnMarket:9,  propertyType:"SFR" },
+  { id:3,  formattedAddress:"8301 E Raintree Dr, Scottsdale, AZ 85258",      latitude:33.6818, longitude:-111.9038, bedrooms:3, bathrooms:2,   squareFootage:1300, price:2580, status:"Inactive", daysOnMarket:22, propertyType:"SFR" },
+  { id:4,  formattedAddress:"8415 E Raintree Dr, Scottsdale, AZ 85258",      latitude:33.6832, longitude:-111.9020, bedrooms:3, bathrooms:2,   squareFootage:1350, price:2620, status:"Inactive", daysOnMarket:30, propertyType:"SFR" },
+  { id:5,  formattedAddress:"8488 E McDonald Dr, Scottsdale, AZ 85258",      latitude:33.6843, longitude:-111.9005, bedrooms:3, bathrooms:2,   squareFootage:1540, price:2760, status:"Inactive", daysOnMarket:18, propertyType:"SFR" },
+  { id:6,  formattedAddress:"8555 E Raintree Dr, Scottsdale, AZ 85258",      latitude:33.6876, longitude:-111.8982, bedrooms:3, bathrooms:2,   squareFootage:1390, price:2700, status:"Inactive", daysOnMarket:21, propertyType:"SFR" },
+  { id:7,  formattedAddress:"8650 E Pinnacle Peak Rd, Scottsdale, AZ 85258", latitude:33.6879, longitude:-111.8948, bedrooms:3, bathrooms:2,   squareFootage:1330, price:2630, status:"Inactive", daysOnMarket:17, propertyType:"SFR" },
+  { id:8,  formattedAddress:"8722 E Via de Ventura, Scottsdale, AZ 85258",   latitude:33.6895, longitude:-111.8930, bedrooms:3, bathrooms:2,   squareFootage:1580, price:3020, status:"Inactive", daysOnMarket:14, propertyType:"SFR" },
+  { id:9,  formattedAddress:"9001 E Bahia Dr, Scottsdale, AZ 85258",         latitude:33.6919, longitude:-111.8875, bedrooms:3, bathrooms:2,   squareFootage:1450, price:2900, status:"Active",   daysOnMarket:3,  propertyType:"SFR" },
+  { id:10, formattedAddress:"9188 E Raintree Dr, Scottsdale, AZ 85258",      latitude:33.6928, longitude:-111.8915, bedrooms:3, bathrooms:2,   squareFootage:1510, price:2975, status:"Active",   daysOnMarket:5,  propertyType:"SFR" },
+];
+
+// ── State ──
+let map, subjectMarker, allComps = [], compMarkers = {}, currentSubject = null;
+
+// ── Init map ──
+function initMap() {
+  map = L.map('map').setView([33.4484, -112.0740], 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',
+    maxZoom: 19
+  }).addTo(map);
+  map.on('moveend zoomend', renderVisible);
+}
+
+// ── Icons ──
+function subjectIcon() {
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:22px;height:22px;border-radius:50%;background:#c8522a;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);"></div>`,
+    iconSize: [22, 22], iconAnchor: [11, 11]
+  });
+}
+function compIcon(status) {
+  const bg = status === 'Active' ? '#1a4f8c' : '#5c35a0';
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${bg};border:2px solid white;box-shadow:0 1px 5px rgba(0,0,0,0.3);"></div>`,
+    iconSize: [14, 14], iconAnchor: [7, 7]
+  });
+}
+
+// ── Status helpers ──
+function setStatus(state, msg) {
+  const dot = document.getElementById('status-dot');
+  dot.className = 'status-dot ' + (state || '');
+  document.getElementById('status-msg').textContent = msg;
+}
+
+// ── Distance between two lat/lng points in miles ──
+function distMi(la1, lo1, la2, lo2) {
+  const R = 3958.8, toR = d => d * Math.PI / 180;
+  const dLa = toR(la2 - la1), dLo = toR(lo2 - lo1);
+  const a = Math.sin(dLa/2)**2 + Math.cos(toR(la1)) * Math.cos(toR(la2)) * Math.sin(dLo/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ── Main search ──
+async function doSearch() {
+  const addr = document.getElementById('addr-input').value.trim();
+  if (!addr) return;
+  const apiKey = document.getElementById('api-key').value.trim();
+
+  document.getElementById('search-btn').disabled = true;
+  setStatus('loading', 'Looking up property…');
+
+  // Clear old markers
+  Object.values(compMarkers).forEach(m => map.removeLayer(m));
+  compMarkers = {};
+  if (subjectMarker) { map.removeLayer(subjectMarker); subjectMarker = null; }
+  allComps = [];
+
+  try {
+    let subject, comps;
+
+    if (apiKey) {
+      // ── Live calls via proxy worker ──
+      const base = apiKey.replace(/\/$/, '');
+      setStatus('loading', 'Calling Rentcast API…');
+
+      const params = new URLSearchParams({ address: addr, propertyType: 'Single Family', compCount: 20 });
+      const res = await fetch(`${base}/rentcast/avm/rent/long-term?${params}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || err.message || `API error ${res.status}`);
+      }
+      const data = await res.json();
+
+      // Fetch property details + Zillow asking price in parallel
+      let propDetails = {}, zillowPrice = null;
+      const [pRes, zRes] = await Promise.allSettled([
+        fetch(`${base}/rentcast/properties?address=${encodeURIComponent(addr)}&limit=1`),
+        fetch(`${base}/zillow-price?address=${encodeURIComponent(addr)}`)
+      ]);
+      if (pRes.status === 'fulfilled' && pRes.value.ok) {
+        const pData = await pRes.value.json();
+        const rec = Array.isArray(pData) ? pData[0] : pData;
+        propDetails = { bedrooms: rec?.bedrooms, bathrooms: rec?.bathrooms, squareFootage: rec?.squareFootage, propertyType: rec?.propertyType };
+      }
+      if (zRes.status === 'fulfilled' && zRes.value.ok) {
+        const zData = await zRes.value.json();
+        zillowPrice = zData.price || null;
+      }
+
+      subject = {
+        address: addr,
+        lat: data.latitude, lng: data.longitude,
+        bedrooms: data.bedrooms || propDetails.bedrooms,
+        bathrooms: data.bathrooms || propDetails.bathrooms,
+        squareFootage: data.squareFootage || propDetails.squareFootage,
+        propertyType: data.propertyType || propDetails.propertyType || 'SFR',
+        rent: Math.round(data.rent),
+        rentRangeLow: Math.round(data.rentRangeLow),
+        rentRangeHigh: Math.round(data.rentRangeHigh),
+        zillowPrice
+      };
+      comps = (data.comparables || []).map((c, i) => ({
+        id: i,
+        formattedAddress: c.formattedAddress || c.address,
+        latitude: c.latitude, longitude: c.longitude,
+        bedrooms: c.bedrooms, bathrooms: c.bathrooms,
+        squareFootage: c.squareFootage,
+        price: Math.round(c.price),
+        status: c.status || 'Active',
+        daysOnMarket: c.daysOnMarket || null,
+        propertyType: c.propertyType || 'SFR'
+      }));
+      setStatus('ok', `Live data · ${comps.length} comps returned`);
+
+    } else {
+      // ── Mock data ──
+      await new Promise(r => setTimeout(r, 600));
+      subject = { ...MOCK_SUBJECT, address: addr };
+      comps = MOCK_COMPS;
+      setStatus('ok', `Mock data (no API key) · ${comps.length} comps`);
+    }
+
+    currentSubject = subject;
+    allComps = comps;
+    placeSubject(subject);
+    placeComps(comps);
+    updateSubjectCard(subject);
+    showUI();
+    renderVisible();
+    map.setView([subject.lat, subject.lng], 15);
+
+  } catch (err) {
+    setStatus('error', 'Error: ' + err.message);
+    console.error(err);
+  } finally {
+    document.getElementById('search-btn').disabled = false;
+  }
+}
+
+// ── Zillow search URL from address ──
+// Uses Zillow's address search — most reliable way to land on the right property
+function zillowUrl(address) {
+  return `https://www.zillow.com/homes/for_rent/${encodeURIComponent(address)}_rb/`;
+}
+function zillowLink(address) {
+  return `<a href="${zillowUrl(address)}" target="_blank" style="display:inline-block;margin-top:8px;font-size:12px;font-weight:500;color:#006aff;text-decoration:none;border:1px solid #006aff;border-radius:6px;padding:4px 10px;">Search on Zillow ↗</a>`;
+}
+
+// ── Place subject marker ──
+function placeSubject(s) {
+  subjectMarker = L.marker([s.lat, s.lng], { icon: subjectIcon(), zIndexOffset: 1000 }).addTo(map);
+  const bedsStr = s.bedrooms ? `${s.bedrooms} bd / ${s.bathrooms} ba` : '';
+  const sqftStr = s.squareFootage ? s.squareFootage.toLocaleString() + ' sqft' : '';
+  const ppsf = (s.squareFootage && s.rent) ? '$' + (s.rent / s.squareFootage).toFixed(2) + '/sqft' : '';
+  const detailRow = [bedsStr, sqftStr, ppsf].filter(Boolean).join(' · ');
+
+  // Build initial price block — use Zillow price if available, else Rentcast estimate
+  const displayPrice = s.zillowPrice || s.rent;
+  const priceSource = s.zillowPrice ? 'Zillow (live)' : 'Rentcast estimate';
+  const priceColor = s.zillowPrice ? '#c8522a' : '#888';
+
+  const div = document.createElement('div');
+  div.innerHTML = `
+    <div class="popup-rent">Subject Property</div>
+    <div class="popup-addr">${s.address}</div>
+    ${detailRow ? `<div class="popup-row">${detailRow}</div>` : ''}
+    <div class="popup-row">${s.propertyType || 'SFR'}</div>
+    <div id="subj-price-block" style="margin-top:8px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
+        <span style="font-size:18px;font-weight:600;color:${priceColor};font-family:'DM Mono',monospace;">$${displayPrice.toLocaleString()}/mo</span>
+        ${s.zillowPrice ? '<span style="background:#dff2e8;color:#2a7a4a;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:0.04em;">Active</span>' : ''}
+      </div>
+      <div style="font-size:11px;color:#9ca3af;">${priceSource} · Rentcast range: $${s.rentRangeLow.toLocaleString()} – $${s.rentRangeHigh.toLocaleString()}</div>
+      ${s.zillowPrice ? `
+        <div style="font-size:11px;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:5px 8px;margin-top:7px;line-height:1.5;">
+          ⚠ Prices change often — <a href="${zillowUrl(s.address)}" target="_blank" style="color:#92400e;font-weight:600;text-decoration:underline;">verify on Zillow</a>.
+        </div>` : ''}
+    </div>
+    <div class="ph-wrap">
+      <div class="ph-title">Price history</div>
+      <div id="subj-hist" class="ph-loading">Loading…</div>
+    </div>
+    ${zillowLink(s.address)}
+  `;
+
+  subjectMarker.bindPopup(L.popup({ maxWidth: 300 }).setContent(div));
+  subjectMarker.on('popupopen', () => {
+    fetchRentHistory(s.address, 'subj-hist');
+  });
+}
+
+// ── Fetch rent history for a comp (lazy, on popup open) ──
+async function fetchRentHistory(address, historyDivId) {
+  const apiKey = document.getElementById('api-key').value.trim();
+  const el = document.getElementById(historyDivId);
+  if (!el) return;
+
+  if (!apiKey) {
+    const mockHistory = [
+      { date: '2026-03-10', event: 'Listing removed', price: 3200 },
+      { date: '2026-01-15', event: 'Listed for rent', price: 3200 },
+      { date: '2025-10-03', event: 'Listing removed', price: 3050 },
+      { date: '2025-08-20', event: 'Listed for rent', price: 3050 },
+    ];
+    el.innerHTML = renderHistoryTable(mockHistory);
+    return;
+  }
+
+  try {
+    const base = apiKey.replace(/\/$/, '');
+    // Fetch inactive + active listings + property record in parallel via worker
+    const [resInactive, resActive, resProp] = await Promise.all([
+      fetch(`${base}/rentcast/listings/rental/long-term?address=${encodeURIComponent(address)}&status=Inactive&limit=20`),
+      fetch(`${base}/rentcast/listings/rental/long-term?address=${encodeURIComponent(address)}&status=Active&limit=5`),
+      fetch(`${base}/rentcast/properties?address=${encodeURIComponent(address)}&limit=1`)
+    ]);
+
+    let history = [];
+
+    // ── Source 1: listing records (active + inactive) ──
+    const inactiveListings = resInactive.ok ? (await resInactive.json()) : [];
+    const activeListings   = resActive.ok  ? (await resActive.json())   : [];
+    const allListings = [
+      ...(Array.isArray(activeListings)  ? activeListings  : activeListings.listings  || []),
+      ...(Array.isArray(inactiveListings) ? inactiveListings : inactiveListings.listings || [])
+    ];
+
+    allListings.forEach(l => {
+      if (l.removedDate) history.push({ date: l.removedDate, event: 'Listing removed', price: l.price });
+      if (l.listedDate)  history.push({ date: l.listedDate,  event: 'Listed for rent', price: l.price });
+      else if (l.status === 'Active' && (l.lastSeenDate || l.createdDate))
+        history.push({ date: l.lastSeenDate || l.createdDate, event: 'Listed for rent', price: l.price });
+    });
+
+    // ── Source 2: property record history arrays ──
+    if (resProp.ok) {
+      const propData = await resProp.json();
+      const prop = Array.isArray(propData) ? propData[0] : propData;
+      const propHistory = prop?.priceHistory || prop?.rentalHistory || prop?.listingHistory || [];
+      propHistory.forEach(h => {
+        const evt = h.event || h.type || h.listingType || h.status || '';
+        const price = h.price ?? h.listingPrice ?? h.rent ?? h.amount ?? null;
+        if (h.date && evt) history.push({ date: h.date, event: evt, price });
+      });
+    }
+
+    // Sort newest first, dedupe exact same date+event
+    history.sort((a, b) => new Date(b.date) - new Date(a.date));
+    history = history.filter((h, i, arr) =>
+      i === 0 || !(h.date === arr[i-1].date && h.event === arr[i-1].event)
+    );
+
+    el.innerHTML = history.length
+      ? renderHistoryTable(history)
+      : '<div class="ph-none">No history on record</div>';
+
+  } catch(e) {
+    el.innerHTML = '<div class="ph-none">History unavailable</div>';
+  }
+}
+
+function abbreviateEvent(evt) {
+  if (/listed|for rent|listing$/i.test(evt)) return 'Listed';
+  if (/removed|expired|cancelled|withdrawn/i.test(evt)) return 'Removed';
+  if (/price.*(reduc|drop|decrease)/i.test(evt)) return 'Price drop';
+  if (/price.*(increase|raise)/i.test(evt)) return 'Price up';
+  if (/price|change/i.test(evt)) return 'Price change';
+  return evt;
+}
+
+function renderHistoryTable(history) {
+  const sorted = [...history].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
+
+  const rows = sorted.map((h, i) => {
+    const d = h.date ? new Date(h.date) : null;
+    const dateStr = d
+      ? `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}`
+      : '—';
+
+    const rawEvt = h.event || h.type || h.listingType || h.status || '';
+    const evt = abbreviateEvent(rawEvt);
+
+    let evtClass = '';
+    if (evt === 'Listed') evtClass = 'ph-listed';
+    else if (evt === 'Removed') evtClass = 'ph-removed';
+    else if (/price/i.test(evt)) evtClass = 'ph-changed';
+
+    const rawPrice = h.price ?? h.listingPrice ?? h.rent ?? h.amount ?? null;
+    const priceStr = rawPrice ? '$' + Math.round(rawPrice).toLocaleString() : '—';
+
+    // Days between this and next event
+    let daysStr = '';
+    if (i < sorted.length - 1 && sorted[i+1].date) {
+      const days = Math.round(Math.abs(new Date(sorted[i].date) - new Date(sorted[i+1].date)) / 86400000);
+      daysStr = `<span style="color:#9ca3af;font-size:10px;"> · ${days}d</span>`;
+    }
+
+    return `<tr>
+      <td>${dateStr}</td>
+      <td class="${evtClass}">${evt}${daysStr}</td>
+      <td>${priceStr}</td>
+    </tr>`;
+  }).join('');
+
+  return `<table class="ph-table">${rows}</table>`;
+}
+
+// ── Place all comp markers (hidden initially, revealed by renderVisible) ──
+function placeComps(comps) {
+  comps.forEach(c => {
+    if (!c.latitude || !c.longitude) return;
+    const isActive = c.status === 'Active';
+    const m = L.marker([c.latitude, c.longitude], { icon: compIcon(c.status) });
+    const badgeStyle = isActive ? 'background:#dff2e8;color:#2a7a4a;' : 'background:#ede9f7;color:#5c35a0;';
+    const sqftStr = c.squareFootage ? c.squareFootage.toLocaleString() + ' sqft' : '—';
+    const ppsf = c.squareFootage ? '$' + (c.price / c.squareFootage).toFixed(2) + '/sqft' : '';
+    const dom = c.daysOnMarket != null ? c.daysOnMarket + ' DOM' : '';
+    const histId = `ph-${c.id}`;
+
+    const dist = currentSubject
+      ? distMi(currentSubject.lat, currentSubject.lng, c.latitude, c.longitude).toFixed(2) + ' mi'
+      : '';
+
+    m.bindPopup(`
+      <div>
+        <div class="popup-rent">$${c.price.toLocaleString()}/mo</div>
+        <div class="popup-addr">${c.formattedAddress}</div>
+        <div class="popup-row">${c.bedrooms || '?'} bd / ${c.bathrooms || '?'} ba · ${sqftStr}</div>
+        <div class="popup-row">${[c.propertyType, ppsf, dom, dist].filter(Boolean).join(' · ')}</div>
+        <span class="popup-badge" style="${badgeStyle}">${isActive ? 'Active' : 'Closed'}</span>
+        <div class="ph-wrap">
+          <div class="ph-title">Price history</div>
+          <div id="${histId}" class="ph-loading">Loading…</div>
+        </div>
+        ${zillowLink(c.formattedAddress)}
+      </div>
+    `, { maxWidth: 300 });
+
+    m.on('popupopen', () => {
+      fetchRentHistory(c.formattedAddress, histId);
+    });
+
+    compMarkers[c.id] = m;
+  });
+}
+
+// ── Render only comps within current map bounds ──
+function renderVisible() {
+  if (!map || !allComps.length) return;
+  const bounds = map.getBounds();
+  const showActive = document.getElementById('cb-active').checked;
+  const showClosed = document.getElementById('cb-closed').checked;
+  const visible = [];
+
+  allComps.forEach(c => {
+    if (!c.latitude || !c.longitude) return;
+    const m = compMarkers[c.id];
+    if (!m) return;
+    const inBounds = bounds.contains([c.latitude, c.longitude]);
+    const isActive = c.status === 'Active';
+    const statusOk = (isActive && showActive) || (!isActive && showClosed);
+
+    if (inBounds && statusOk) {
+      if (!map.hasLayer(m)) map.addLayer(m);
+      visible.push(c);
+    } else {
+      if (map.hasLayer(m)) map.removeLayer(m);
+    }
+  });
+
+  updateStats(visible);
+  updateCompList(visible);
+}
+
+// ── Subject card ──
+function updateSubjectCard(s) {
+  document.getElementById('sc-addr').textContent = s.address;
+  const meta = [
+    s.bedrooms ? `${s.bedrooms} bd` : null,
+    s.bathrooms ? `${s.bathrooms} ba` : null,
+    s.squareFootage ? `${s.squareFootage.toLocaleString()} sqft` : null,
+    s.propertyType || null
+  ].filter(Boolean).join(' · ');
+  document.getElementById('sc-meta').textContent = meta;
+  document.getElementById('sc-rent').textContent = '$' + s.rent.toLocaleString() + '/mo';
+  document.getElementById('sc-range').textContent = `Range: $${s.rentRangeLow.toLocaleString()} – $${s.rentRangeHigh.toLocaleString()}`;
+  document.getElementById('subject-card').classList.add('visible');
+}
+
+// ── Stats ──
+function updateStats(comps) {
+  document.getElementById('s-count').textContent = comps.length;
+  if (!comps.length) {
+    ['s-median','s-range-stat','s-sqft'].forEach(id => document.getElementById(id).textContent = '—');
+    return;
+  }
+  const rents = comps.map(c => c.price).sort((a,b) => a-b);
+  const mid = Math.floor(rents.length / 2);
+  const median = rents.length % 2 === 0 ? Math.round((rents[mid-1]+rents[mid])/2) : rents[mid];
+  document.getElementById('s-median').textContent = '$' + median.toLocaleString();
+  document.getElementById('s-range-stat').textContent = '$' + Math.min(...rents).toLocaleString() + '–$' + Math.max(...rents).toLocaleString();
+  const withSqft = comps.filter(c => c.squareFootage);
+  if (withSqft.length) {
+    const avg = withSqft.reduce((a,c) => a + (c.price/c.squareFootage), 0) / withSqft.length;
+    document.getElementById('s-sqft').textContent = '$' + avg.toFixed(2);
+  } else {
+    document.getElementById('s-sqft').textContent = '—';
+  }
+}
+
+// ── Sidebar comp list ──
+function updateCompList(comps) {
+  const wrap = document.getElementById('comp-list-wrap');
+  if (!comps.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="big">🔍</div>No comps visible in this map area.<br>Try zooming out.</div>`;
+    return;
+  }
+  const sorted = [...comps].sort((a,b) => a.price - b.price);
+  const header = `<div class="comp-list-header">${comps.length} comp${comps.length!==1?'s':''} in view</div>`;
+  const items = sorted.map(c => {
+    const isActive = c.status === 'Active';
+    const sqftStr = c.squareFootage ? `${c.squareFootage.toLocaleString()} sqft` : '';
+    const ppsf = c.squareFootage ? ` · $${(c.price/c.squareFootage).toFixed(2)}/sf` : '';
+    const dom = c.daysOnMarket != null ? ` · ${c.daysOnMarket} DOM` : '';
+    return `
+      <div class="comp-item ${isActive?'active-listing':'closed-listing'}" onclick="focusComp(${c.id})">
+        <div class="ci-top">
+          <div class="ci-rent">$${c.price.toLocaleString()}/mo</div>
+          <span class="badge ${isActive?'badge-active':'badge-closed'}">${isActive?'Active':'Closed'}</span>
+        </div>
+        <div class="ci-addr">${c.formattedAddress}</div>
+        <div class="ci-meta">${c.bedrooms||'?'}bd/${c.bathrooms||'?'}ba${sqftStr?' · '+sqftStr:''}${ppsf}${dom}</div>
+        <a href="${zillowUrl(c.formattedAddress)}" target="_blank" onclick="event.stopPropagation()" style="display:inline-block;margin-top:6px;font-size:11px;font-weight:500;color:#006aff;text-decoration:none;">Search on Zillow ↗</a>
+      </div>
+    `;
+  }).join('');
+  wrap.innerHTML = header + items;
+}
+
+// ── Click comp in list → open popup ──
+function focusComp(id) {
+  const m = compMarkers[id];
+  if (!m) return;
+  map.setView(m.getLatLng(), Math.max(map.getZoom(), 16));
+  m.openPopup();
+}
+
+// ── Show UI elements after first search ──
+function showUI() {
+  document.getElementById('stats-grid').style.display = 'grid';
+  document.getElementById('filter-row').style.display = 'flex';
+  document.getElementById('legend').style.display = 'flex';
+}
+
+// ── Enter key on address ──
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  document.getElementById('addr-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doSearch();
+  });
+});
+</script>
+</body>
+</html>
