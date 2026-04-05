@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- RentalComp Map
-  v1.1  2026-04-05  worker URL hardcoded, proxy field hidden, version leak fixed
-  v1.0  2026-04-05  Cloudflare Worker proxy: Rentcast key server-side, Zillow price scraping
+  v1.2  2026-04-05  Realty 25 AZ navy/gold branding, R25 badge, version leak fixed
+  v1.1  2026-04-05  worker URL hardcoded, proxy field hidden, auto-search on load
   v0.9  price staleness warning with Zillow link
   v0.8  history 3 sources in parallel
   v0.7  asking price no rounding, history 10 events, version log
@@ -16,7 +16,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Map v1.1</title>
+<title>RentalComp Map v1.2</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -53,12 +53,13 @@
 
   /* ── Header ── */
   header {
-    background: var(--text);
+    background: #0d1b2e;
     color: #fff;
     padding: 14px 28px;
     display: flex;
     align-items: center;
     gap: 16px;
+    border-bottom: 2px solid #c9a84c;
   }
   header .logo {
     font-size: 15px;
@@ -66,13 +67,14 @@
     letter-spacing: 0.02em;
     color: #fff;
   }
-  header .logo span { color: var(--accent); }
+  header .logo span { color: #c9a84c; }
   header .tagline {
     font-size: 12px;
-    color: rgba(255,255,255,0.45);
+    color: rgba(201,168,76,0.6);
     font-weight: 300;
     margin-left: auto;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     text-transform: uppercase;
   }
 
@@ -137,19 +139,19 @@
   .addr-row input:focus { border-color: var(--accent2); }
 
   button.primary {
-    background: var(--accent);
-    color: #fff;
+    background: #c9a84c;
+    color: #0d1b2e;
     border: none;
     border-radius: var(--radius);
     padding: 10px 16px;
     font-family: var(--font);
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
     transition: background 0.15s, transform 0.1s;
   }
-  button.primary:hover { background: #b04520; }
+  button.primary:hover { background: #b8943d; }
   button.primary:active { transform: scale(0.97); }
   button.primary:disabled { background: #ccc; cursor: not-allowed; }
 
