@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <!-- RentalComp Map
+  v1.6  2026-04-05  History cache (0 repeat calls), 3 calls → 1 per history fetch
+  v1.5  2026-04-05  Removed status/live comps from stats bar, 4 clean stats only
+  v1.4  2026-04-05  Stats bar full-width bottom, legend repositioned, toggle stays ☰
   v1.3  2026-04-05  Map-first: floating collapsible panel, stats strip, full-screen map
-  v1.2  Realty 25 AZ navy/gold branding
-  v1.1  Worker URL hardcoded, proxy hidden, auto-search on load
-  v1.0  Cloudflare Worker proxy, Zillow price scraping
-  v0.9  Price staleness warning
+  v1.2  2026-04-05  Realty 25 AZ navy/gold branding, RentalComp Intelligence header
+  v1.1  2026-04-05  Worker URL hardcoded, proxy hidden, auto-search on load
+  v1.0  2026-04-05  Cloudflare Worker proxy, Zillow price scraping
+  v0.9  Price staleness warning with Zillow link
   v0.8  History 3 sources in parallel
   v0.7  Asking price no rounding, history 10 events, version log
   v0.6  History two-rows-per-listing, subject Active badge + history
@@ -18,7 +21,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Map v1.3</title>
+<title>RentalComp Intelligence v1.6</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -210,11 +213,6 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
     <div class="ss-item"><div class="ss-lbl">Range</div><div class="ss-val" id="s-range-stat" style="font-size:11px;">—</div></div>
     <div class="ss-div"></div>
     <div class="ss-item"><div class="ss-lbl">Avg $/sqft</div><div class="ss-val" id="s-sqft">—</div></div>
-    <div class="ss-div"></div>
-    <div class="ss-item" style="display:flex;align-items:center;gap:5px;flex:1.2;">
-      <div class="sdot" id="status-dot"></div>
-      <span id="status-msg" style="font-size:10px;color:var(--text3);">Ready</span>
-    </div>
   </div>
 
   <!-- Legend -->
@@ -224,8 +222,10 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
     <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
   </div>
 
-  <!-- Hidden worker URL -->
+  <!-- Hidden worker URL + status (not displayed) -->
   <input type="hidden" id="api-key" value="https://rentalcomp-proxy.alik-levin.workers.dev" />
+  <span id="status-dot" style="display:none;"></span>
+  <span id="status-msg" style="display:none;"></span>
 
 <script>
 const MOCK_SUBJECT = {
@@ -360,30 +360,46 @@ function placeComps(comps) {
   });
 }
 
+// ── History cache — keyed by address, survives the session ──
+const historyCache = {};
+
 async function fetchRentHistory(address,historyDivId) {
   const apiKey=document.getElementById('api-key').value.trim();
   const el=document.getElementById(historyDivId); if(!el) return;
-  if(!apiKey){el.innerHTML=renderHistoryTable([{date:'2026-03-10',event:'Listing removed',price:3200},{date:'2026-01-15',event:'Listed for rent',price:3200},{date:'2025-10-03',event:'Listing removed',price:3050},{date:'2025-08-20',event:'Listed for rent',price:3050}]);return;}
+
+  if(!apiKey){
+    el.innerHTML=renderHistoryTable([
+      {date:'2026-03-10',event:'Listing removed',price:3200},
+      {date:'2026-01-15',event:'Listed for rent',price:3200},
+      {date:'2025-10-03',event:'Listing removed',price:3050},
+      {date:'2025-08-20',event:'Listed for rent',price:3050}
+    ]); return;
+  }
+
+  // Serve from cache — zero API calls on repeat clicks
+  if(historyCache[address]) {
+    el.innerHTML=historyCache[address]; return;
+  }
+
   try {
     const base=apiKey.replace(/\/$/,'');
-    const [r1,r2,r3]=await Promise.all([
-      fetch(`${base}/rentcast/listings/rental/long-term?address=${encodeURIComponent(address)}&status=Inactive&limit=20`),
-      fetch(`${base}/rentcast/listings/rental/long-term?address=${encodeURIComponent(address)}&status=Active&limit=5`),
-      fetch(`${base}/rentcast/properties?address=${encodeURIComponent(address)}&limit=1`)
-    ]);
+    // Single call — inactive listings give us full history (listed + removed dates per record)
+    const res=await fetch(`${base}/rentcast/listings/rental/long-term?address=${encodeURIComponent(address)}&status=Inactive&limit=20`);
     let history=[];
-    const inactive=r1.ok?(await r1.json()):[];
-    const active=r2.ok?(await r2.json()):[];
-    const allL=[...(Array.isArray(active)?active:active.listings||[]),...(Array.isArray(inactive)?inactive:inactive.listings||[])];
-    allL.forEach(l=>{
-      if(l.removedDate) history.push({date:l.removedDate,event:'Listing removed',price:l.price});
-      if(l.listedDate) history.push({date:l.listedDate,event:'Listed for rent',price:l.price});
-      else if(l.status==='Active'&&(l.lastSeenDate||l.createdDate)) history.push({date:l.lastSeenDate||l.createdDate,event:'Listed for rent',price:l.price});
-    });
-    if(r3.ok){const pd=await r3.json();const prop=Array.isArray(pd)?pd[0]:pd;(prop?.priceHistory||prop?.rentalHistory||[]).forEach(h=>{const evt=h.event||h.type||h.listingType||h.status||'';const price=h.price??h.listingPrice??h.rent??h.amount??null;if(h.date&&evt)history.push({date:h.date,event:evt,price});});}
+    if(res.ok) {
+      const data=await res.json();
+      const listings=Array.isArray(data)?data:(data.listings||[]);
+      listings.forEach(l=>{
+        if(l.removedDate) history.push({date:l.removedDate,event:'Listing removed',price:l.price});
+        if(l.listedDate)  history.push({date:l.listedDate, event:'Listed for rent',price:l.price});
+        else if(l.lastSeenDate||l.createdDate) history.push({date:l.lastSeenDate||l.createdDate,event:'Listed for rent',price:l.price});
+      });
+    }
     history.sort((a,b)=>new Date(b.date)-new Date(a.date));
     history=history.filter((h,i,arr)=>i===0||!(h.date===arr[i-1].date&&h.event===arr[i-1].event));
-    el.innerHTML=history.length?renderHistoryTable(history):'<div class="ph-none">No history on record</div>';
+    const html=history.length?renderHistoryTable(history):'<div class="ph-none">No history on record</div>';
+    historyCache[address]=html; // cache it
+    el.innerHTML=html;
   } catch(e){el.innerHTML='<div class="ph-none">History unavailable</div>';}
 }
 
