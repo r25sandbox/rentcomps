@@ -3,6 +3,7 @@
 <head>
 <!--
   RentalComp Intelligence — rental-comp-map.html
+  v1.9  2026-04-05  Panel starts collapsed via CSS (no flash), open/collapsed class pattern
   v1.8  2026-04-05  Popup width capped mobile, Zillow scrape + Rentcast fallback, price source label
   v1.7  2026-04-05  Asking price from Rentcast active listing, Active badge + DOM
   v1.6  2026-04-05  History cache, 3 calls → 1 per history fetch
@@ -24,7 +25,7 @@
 -->
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v1.8</title>
+<title>RentalComp Intelligence v1.9</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -57,9 +58,10 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
   z-index: 1000; border-radius: var(--radius);
   box-shadow: 0 4px 28px rgba(0,0,0,0.25);
   overflow: hidden; display: flex; flex-direction: column;
-  transition: max-height 0.3s ease;
+  max-height: 52px; /* collapsed by default — no flash */
 }
-.panel.collapsed { max-height: 52px; }
+.panel.open { max-height: calc(100% - 80px); transition: max-height 0.3s ease; }
+.panel.collapsed { max-height: 52px; transition: max-height 0.3s ease; }
 
 .panel-top {
   background: var(--surface); padding: 8px 8px 8px 12px;
@@ -238,6 +240,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v1.9  2026-04-05  Panel starts collapsed via CSS, open/collapsed class pattern
    v1.8  2026-04-05  Popup width capped mobile, Zillow scrape + Rentcast fallback, price source label
    v1.7  2026-04-05  Asking price from Rentcast active listing, Active badge + DOM
    v1.6  2026-04-05  History cache, 3 calls → 1 per history fetch
@@ -286,7 +289,9 @@ function initMap() {
 
 function togglePanel() {
   panelOpen = !panelOpen;
-  document.getElementById('panel').classList.toggle('collapsed', !panelOpen);
+  const p = document.getElementById('panel');
+  p.classList.toggle('open', panelOpen);
+  p.classList.toggle('collapsed', !panelOpen);
 }
 
 function subjectIcon() { return L.divIcon({className:'',html:`<div style="width:22px;height:22px;border-radius:50%;background:#c8522a;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>`,iconSize:[22,22],iconAnchor:[11,11]}); }
@@ -336,7 +341,9 @@ async function doSearch() {
     renderVisible(); map.setView([subject.lat,subject.lng],15);
     // Auto-expand panel to show results
     panelOpen=true;
-    document.getElementById('panel').classList.remove('collapsed');
+    const p=document.getElementById('panel');
+    p.classList.remove('collapsed');
+    p.classList.add('open');
   } catch(err) { setStatus('error',err.message); }
   finally { document.getElementById('search-btn').disabled=false; }
 }
@@ -534,9 +541,6 @@ function focusComp(id) { const m=compMarkers[id];if(!m)return;map.setView(m.getL
 document.addEventListener('DOMContentLoaded',()=>{
   initMap();
   document.getElementById('stats-strip').classList.add('visible');
-  // Ensure panel starts collapsed
-  panelOpen = false;
-  document.getElementById('panel').classList.add('collapsed');
   document.getElementById('addr-input').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
   setTimeout(doSearch,800);
 });
