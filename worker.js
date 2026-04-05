@@ -3,7 +3,7 @@
  * Proxies Rentcast API (key stored as secret) + scrapes Zillow asking price
  *
  * Environment variables (set in Cloudflare dashboard → Workers → Settings → Variables):
- *   RENTCAST_KEY   6ad16d1257704fe2a61813c6f6115040
+ *   RENTCAST_KEY   
  *   ALLOWED_ORIGIN your Carrd site URL e.g. https://alikrupnik.carrd.co (or * for dev)
  */
 
