@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v2.1</title>
+<title>RentalComp Intelligence v2.2</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -203,6 +203,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:#c8522a;"></span>Subject</span>
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
+      <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
     </div>
   </div>
 
@@ -220,8 +221,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v2.1  2026-04-05  Per-comp exclude toggle (gray pin, strikethrough, stats recalc), price position bar
-   v2.0  2026-04-05  Default address → 10394 E Morning Star Dr (verified rental)
+   v2.2  2026-04-05  Collapsible included/excluded sections, gray dot in legend, 3-way comp estimate card
+   v2.1  2026-04-05  Per-comp exclude toggle, gray pin, price position bar
    v1.9  2026-04-05  Panel starts collapsed via CSS, open/collapsed class fix
    v1.8  2026-04-05  Zillow scrape confirmed blocked (403), Rentcast fallback for asking price
    v1.7  2026-04-05  Asking price from Rentcast active listing, Active badge + DOM
@@ -520,7 +521,7 @@ function updateStats(comps) {
   const included = comps.filter(c=>!excluded.has(c.id));
   const excCount = comps.length - included.length;
   document.getElementById('s-count').textContent = included.length + (excCount ? ` (${excCount} excl.)` : '');
-  if(!included.length){['s-median','s-range-stat','s-sqft'].forEach(id=>document.getElementById(id).textContent='—');updatePriceBar(null,null,null);return;}
+  if(!included.length){['s-median','s-range-stat','s-sqft'].forEach(id=>document.getElementById(id).textContent='—');updatePriceBar(null,null,null);updateCompEstimate(null);return;}
   const rents=included.map(c=>c.price).sort((a,b)=>a-b);
   const mid=Math.floor(rents.length/2);
   const median=rents.length%2===0?Math.round((rents[mid-1]+rents[mid])/2):rents[mid];
@@ -529,28 +530,56 @@ function updateStats(comps) {
   const ws=included.filter(c=>c.squareFootage);
   document.getElementById('s-sqft').textContent=ws.length?'$'+(ws.reduce((a,c)=>a+(c.price/c.squareFootage),0)/ws.length).toFixed(2):'—';
   document.getElementById('stats-strip').classList.add('visible');
-  // Price position bar
   const subjectPrice = currentSubject ? (currentSubject.askingPrice||currentSubject.rent) : null;
   updatePriceBar(subjectPrice, Math.min(...rents), Math.max(...rents));
+  updateCompEstimate(included, median, Math.min(...rents), Math.max(...rents));
 }
 
-function updatePriceBar(subjectPrice, minPrice, maxPrice) {
+function updateCompEstimate(included, median, minRent, maxRent) {
   const bar = document.getElementById('price-bar-wrap');
   if(!bar) return;
-  if(!subjectPrice || !minPrice || minPrice===maxPrice) { bar.style.display='none'; return; }
-  const pct = Math.max(0, Math.min(100, ((subjectPrice-minPrice)/(maxPrice-minPrice))*100));
+  if(!included || !currentSubject) { bar.style.display='none'; return; }
+
+  const subjectPrice = currentSubject.askingPrice || currentSubject.rent;
+  const rcEstimate = currentSubject.rent;
+
+  // Weighted estimate: median of included comps, adjusted for subject sqft vs avg comp sqft
+  const withSqft = included.filter(c=>c.squareFootage && c.price);
+  let compEstimate = median;
+  if(withSqft.length && currentSubject.squareFootage) {
+    const avgPpsf = withSqft.reduce((a,c)=>a+(c.price/c.squareFootage),0)/withSqft.length;
+    compEstimate = Math.round(avgPpsf * currentSubject.squareFootage);
+  }
+
+  const pct = Math.max(0, Math.min(100, ((subjectPrice-minRent)/(maxRent-minRent))*100));
   const color = pct < 33 ? '#16a34a' : pct < 67 ? '#c9a84c' : '#dc2626';
+
   bar.style.display='block';
   bar.innerHTML=`
-    <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#9ca3af;font-weight:700;margin-bottom:5px;">Subject vs comp range</div>
+    <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#9ca3af;font-weight:700;margin-bottom:8px;">Comp estimate · ${included.length} included</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;text-align:center;">
+      <div style="background:#f4f2ec;border-radius:6px;padding:6px 4px;">
+        <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:#9ca3af;margin-bottom:2px;">Asking</div>
+        <div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:#c8522a;">$${subjectPrice.toLocaleString()}</div>
+      </div>
+      <div style="background:#f4f2ec;border-radius:6px;padding:6px 4px;">
+        <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:#9ca3af;margin-bottom:2px;">Comp est.</div>
+        <div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:#1a4f8c;">$${compEstimate.toLocaleString()}</div>
+      </div>
+      <div style="background:#f4f2ec;border-radius:6px;padding:6px 4px;">
+        <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:#9ca3af;margin-bottom:2px;">Rentcast</div>
+        <div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:#888;">$${rcEstimate.toLocaleString()}</div>
+      </div>
+    </div>
+    <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#9ca3af;font-weight:700;margin-bottom:5px;">Position in comp range</div>
     <div style="position:relative;height:6px;background:#e5e7eb;border-radius:3px;">
       <div style="position:absolute;left:0;top:0;height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width 0.4s ease;"></div>
       <div style="position:absolute;top:-3px;left:calc(${pct}% - 5px);width:10px;height:12px;background:${color};border-radius:2px;"></div>
     </div>
     <div style="display:flex;justify-content:space-between;font-size:9px;color:#9ca3af;margin-top:3px;">
-      <span>$${minPrice.toLocaleString()}</span>
-      <span style="color:${color};font-weight:600;">$${subjectPrice.toLocaleString()}</span>
-      <span>$${maxPrice.toLocaleString()}</span>
+      <span>$${minRent.toLocaleString()}</span>
+      <span style="color:${color};font-weight:700;">$${subjectPrice.toLocaleString()}</span>
+      <span>$${maxRent.toLocaleString()}</span>
     </div>`;
 }
 
@@ -581,12 +610,31 @@ function updateCompList(comps) {
     </div>`;
   };
 
-  const header=`<div class="comp-list-header">${included.length} included${excl.length?' · '+excl.length+' excluded':''}</div>`;
-  wrap.innerHTML = header + sorted.map(c=>renderItem(c,false)).join('') +
-    (exclSorted.length ? `<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#bbb;margin:10px 0 6px;font-weight:700;">Excluded</div>` + exclSorted.map(c=>renderItem(c,true)).join('') : '');
+  // Collapsible section helper
+  const section = (id, label, count, items, defaultOpen=true) => `
+    <div style="margin-bottom:4px;">
+      <div onclick="toggleSection('${id}')" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:6px 2px;user-select:none;">
+        <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:${defaultOpen?'var(--text2)':'#bbb'};">${label} <span style="font-weight:400;opacity:0.7;">(${count})</span></span>
+        <span id="${id}-arrow" style="font-size:10px;color:#bbb;transition:transform 0.2s;">${defaultOpen?'▲':'▼'}</span>
+      </div>
+      <div id="${id}-body">${items}</div>
+    </div>`;
+
+  wrap.innerHTML =
+    section('incl-section', 'Included', sorted.length, sorted.map(c=>renderItem(c,false)).join(''), true) +
+    (exclSorted.length ? section('excl-section', 'Excluded', exclSorted.length, exclSorted.map(c=>renderItem(c,true)).join(''), false) : '');
 }
 
 function focusComp(id) { const m=compMarkers[id];if(!m)return;map.setView(m.getLatLng(),Math.max(map.getZoom(),16));m.openPopup(); }
+
+function toggleSection(id) {
+  const body = document.getElementById(`${id}-body`);
+  const arrow = document.getElementById(`${id}-arrow`);
+  if(!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if(arrow) arrow.textContent = isOpen ? '▼' : '▲';
+}
 
 document.addEventListener('DOMContentLoaded',()=>{
   initMap();
