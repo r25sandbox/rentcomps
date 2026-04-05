@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v2.2</title>
+<title>RentalComp Intelligence v2.3</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -221,8 +221,14 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v2.2  2026-04-05  Collapsible included/excluded sections, gray dot in legend, 3-way comp estimate card
+   v2.3  2026-04-05  Fix render order: setView before renderVisible, 300ms settle delay
+                     // Commit: fix comps not showing + map not centering after search
+   v2.2  2026-04-05  Collapsible sections, gray excluded dot in legend, 3-way comp estimate
+                     // Commit: collapsible included/excluded lists, comp estimate card
    v2.1  2026-04-05  Per-comp exclude toggle, gray pin, price position bar
+                     // Commit: exclude comps from stats, price position indicator
+   v2.0  2026-04-05  Default address → 10394 E Morning Star Dr (verified rental)
+                     // Commit: switch default to verified rental address
    v1.9  2026-04-05  Panel starts collapsed via CSS, open/collapsed class fix
    v1.8  2026-04-05  Zillow scrape confirmed blocked (403), Rentcast fallback for asking price
    v1.7  2026-04-05  Asking price from Rentcast active listing, Active badge + DOM
@@ -314,12 +320,15 @@ async function doSearch() {
     placeSubject(subject); placeComps(comps); updateSubjectCard(subject);
     document.getElementById('filter-row').style.display='flex';
     document.getElementById('legend-float').classList.add('visible');
-    renderVisible(); map.setView([subject.lat,subject.lng],15);
-    // Auto-expand panel to show results
-    panelOpen=true;
-    const p=document.getElementById('panel');
-    p.classList.remove('collapsed');
-    p.classList.add('open');
+    // Set view first, then render after map settles
+    map.setView([subject.lat,subject.lng],15);
+    setTimeout(()=>{
+      renderVisible();
+      panelOpen=true;
+      const p=document.getElementById('panel');
+      p.classList.remove('collapsed');
+      p.classList.add('open');
+    }, 300);
   } catch(err) { setStatus('error',err.message); }
   finally { document.getElementById('search-btn').disabled=false; }
 }
