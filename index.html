@@ -116,22 +116,22 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 .badge-closed { background: #ede9f7; color: var(--purple); }
 .empty-state { text-align: center; padding: 24px 12px; color: var(--text3); font-size: 11px; line-height: 1.7; }
 
-/* Stats strip — bottom left */
+/* Stats strip — bottom, full width between panel and right edge */
 .stats-strip {
-  position: absolute; bottom: 20px; left: 12px; z-index: 1000;
-  background: var(--surface); border-radius: 10px;
-  box-shadow: 0 3px 14px rgba(0,0,0,0.15);
-  padding: 8px 14px; display: none; gap: 14px; align-items: center;
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 1000;
+  background: var(--surface); border-top: 1px solid var(--border);
+  padding: 8px 16px; display: none; gap: 0; align-items: center;
+  justify-content: space-around;
 }
 .stats-strip.visible { display: flex; }
-.ss-item { text-align: center; }
+.ss-item { text-align: center; flex: 1; }
 .ss-lbl { font-size: 8px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); font-weight: 700; margin-bottom: 2px; }
 .ss-val { font-size: 13px; font-weight: 600; font-family: var(--mono); color: var(--text); }
 .ss-div { width: 1px; height: 28px; background: var(--border2); }
 
-/* Legend — top right */
+/* Legend — top right, pushed below panel top so no overlap */
 .legend-float {
-  position: absolute; top: 12px; right: 12px; z-index: 1000;
+  position: absolute; top: 68px; right: 12px; z-index: 1000;
   background: var(--surface); border-radius: 10px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.12);
   padding: 8px 12px; display: none; flex-direction: column;
@@ -140,14 +140,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 .legend-float.visible { display: flex; }
 .ldot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; vertical-align: middle; }
 
-/* Status pill — bottom right */
-.status-pill {
-  position: absolute; bottom: 20px; right: 12px; z-index: 1000;
-  background: var(--surface); border-radius: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  padding: 5px 11px; font-size: 11px; color: var(--text3);
-  display: flex; align-items: center; gap: 5px;
-}
+/* Status — inside stats strip, no separate pill needed */
+.status-pill { display: none; }
 .sdot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
 .sdot.loading { background: #f0a500; animation: pulse 1s infinite; }
 .sdot.ok { background: var(--green); }
@@ -178,8 +172,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 <body>
 
 <header>
-  <div class="logo">Rental<span>Comp</span> Map</div>
-  <div class="tagline">Investment Property Intelligence</div>
+  <div class="logo">Rental<span>Comp</span></div>
+  <div class="tagline">Intelligence</div>
 </header>
 
 <div class="app">
@@ -207,7 +201,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
     </div>
   </div>
 
-  <!-- Stats strip -->
+  <!-- Stats strip — full bottom bar -->
   <div class="stats-strip" id="stats-strip">
     <div class="ss-item"><div class="ss-lbl">In view</div><div class="ss-val" id="s-count">—</div></div>
     <div class="ss-div"></div>
@@ -216,6 +210,11 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
     <div class="ss-item"><div class="ss-lbl">Range</div><div class="ss-val" id="s-range-stat" style="font-size:11px;">—</div></div>
     <div class="ss-div"></div>
     <div class="ss-item"><div class="ss-lbl">Avg $/sqft</div><div class="ss-val" id="s-sqft">—</div></div>
+    <div class="ss-div"></div>
+    <div class="ss-item" style="display:flex;align-items:center;gap:5px;flex:1.2;">
+      <div class="sdot" id="status-dot"></div>
+      <span id="status-msg" style="font-size:10px;color:var(--text3);">Ready</span>
+    </div>
   </div>
 
   <!-- Legend -->
@@ -225,15 +224,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
     <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
   </div>
 
-  <!-- Status -->
-  <div class="status-pill">
-    <div class="sdot" id="status-dot"></div>
-    <span id="status-msg">Ready</span>
-  </div>
-</div>
-
-<!-- Hidden worker URL -->
-<input type="hidden" id="api-key" value="https://rentalcomp-proxy.alik-levin.workers.dev" />
+  <!-- Hidden worker URL -->
+  <input type="hidden" id="api-key" value="https://rentalcomp-proxy.alik-levin.workers.dev" />
 
 <script>
 const MOCK_SUBJECT = {
@@ -265,7 +257,6 @@ function initMap() {
 function togglePanel() {
   panelOpen = !panelOpen;
   document.getElementById('panel').classList.toggle('collapsed', !panelOpen);
-  document.getElementById('toggle-btn').textContent = panelOpen ? '☰' : '▶';
 }
 
 function subjectIcon() { return L.divIcon({className:'',html:`<div style="width:22px;height:22px;border-radius:50%;background:#c8522a;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>`,iconSize:[22,22],iconAnchor:[11,11]}); }
@@ -485,6 +476,7 @@ function focusComp(id) { const m=compMarkers[id];if(!m)return;map.setView(m.getL
 
 document.addEventListener('DOMContentLoaded',()=>{
   initMap();
+  document.getElementById('stats-strip').classList.add('visible');
   document.getElementById('addr-input').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
   setTimeout(doSearch,800);
 });
