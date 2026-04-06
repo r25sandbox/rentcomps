@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v3.2</title>
+<title>RentalComp Intelligence v3.3</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -221,7 +221,9 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v3.2  2026-04-05  Two markers on slider: red=asking, navy=comp estimate. Labels match colors.
+   v3.3  2026-04-05  Fix dual markers: navy taller, red on top, neutral track, always both visible
+                     // Commit: fix navy comp marker hidden behind red asking marker
+   v3.2  2026-04-05  Two markers on slider: red=asking, navy=comp estimate
                      // Commit: dual markers on slider - asking vs comp estimate visual
    v3.1  2026-04-05  Signal: Above comp estimate (not range), DOM restored to subject popup
                      // Commit: fix signal wording + restore DOM in subject popup
@@ -626,10 +628,10 @@ function updateCompEstimate(included, median, minRent, maxRent) {
         <span style="font-size:9px;font-weight:700;color:${included.length<5?'#dc2626':'#9ca3af'};">${included.length} included</span>
         <span style="font-size:9px;font-weight:700;color:${color};">${signal}</span>
       </div>
-      <div style="position:relative;height:6px;background:#e5e7eb;border-radius:3px;margin-top:4px;">
-        <div style="position:absolute;left:0;top:0;height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width 0.4s ease;"></div>
-        <div style="position:absolute;top:-3px;left:calc(${pct}% - 5px);width:10px;height:12px;background:#c8522a;border-radius:2px;transition:left 0.4s ease;"></div>
-        <div style="position:absolute;top:-3px;left:calc(${compPct}% - 5px);width:10px;height:12px;background:#1a4f8c;border-radius:2px;transition:left 0.4s ease;"></div>
+      <div style="position:relative;height:6px;background:#e5e7eb;border-radius:3px;margin-top:8px;">
+        <div style="position:absolute;left:0;top:0;height:100%;width:100%;background:#e5e7eb;border-radius:3px;"></div>
+        <div style="position:absolute;top:-5px;left:calc(${compPct}% - 5px);width:10px;height:16px;background:#1a4f8c;border-radius:2px;z-index:1;"></div>
+        <div style="position:absolute;top:-2px;left:calc(${pct}% - 5px);width:10px;height:10px;background:#c8522a;border-radius:2px;z-index:2;"></div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:9px;color:#9ca3af;margin-top:5px;">
         <span>$${minRent.toLocaleString()}</span>
