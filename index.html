@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v3.1</title>
+<title>RentalComp Intelligence v3.2</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -221,6 +221,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v3.2  2026-04-05  Two markers on slider: red=asking, navy=comp estimate. Labels match colors.
+                     // Commit: dual markers on slider - asking vs comp estimate visual
    v3.1  2026-04-05  Signal: Above comp estimate (not range), DOM restored to subject popup
                      // Commit: fix signal wording + restore DOM in subject popup
    v3.0  2026-04-05  Slider: remove label above, marker always asking-red, included count red <5
@@ -602,6 +604,7 @@ function updateCompEstimate(included, median, minRent, maxRent) {
   const signal = gapPct <= 5 ? 'Well priced' : gapPct <= 15 ? 'Slightly above estimate' : 'Above comp estimate';
 
   const pct = Math.max(0, Math.min(100, ((subjectPrice-minRent)/(maxRent-minRent))*100));
+  const compPct = Math.max(0, Math.min(100, ((compEstimate-minRent)/(maxRent-minRent))*100));
 
   const estimateHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;">
@@ -623,13 +626,17 @@ function updateCompEstimate(included, median, minRent, maxRent) {
         <span style="font-size:9px;font-weight:700;color:${included.length<5?'#dc2626':'#9ca3af'};">${included.length} included</span>
         <span style="font-size:9px;font-weight:700;color:${color};">${signal}</span>
       </div>
-      <div style="position:relative;height:6px;background:#e5e7eb;border-radius:3px;">
+      <div style="position:relative;height:6px;background:#e5e7eb;border-radius:3px;margin-top:4px;">
         <div style="position:absolute;left:0;top:0;height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width 0.4s ease;"></div>
-        <div style="position:absolute;top:-3px;left:calc(${pct}% - 5px);width:10px;height:12px;background:#c8522a;border-radius:2px;"></div>
+        <div style="position:absolute;top:-3px;left:calc(${pct}% - 5px);width:10px;height:12px;background:#c8522a;border-radius:2px;transition:left 0.4s ease;"></div>
+        <div style="position:absolute;top:-3px;left:calc(${compPct}% - 5px);width:10px;height:12px;background:#1a4f8c;border-radius:2px;transition:left 0.4s ease;"></div>
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:9px;color:#9ca3af;margin-top:3px;">
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:#9ca3af;margin-top:5px;">
         <span>$${minRent.toLocaleString()}</span>
-        <span style="color:#c8522a;font-weight:700;">$${subjectPrice.toLocaleString()}</span>
+        <span style="display:flex;gap:10px;">
+          <span style="color:#1a4f8c;font-weight:700;">$${compEstimate.toLocaleString()}</span>
+          <span style="color:#c8522a;font-weight:700;">$${subjectPrice.toLocaleString()}</span>
+        </span>
         <span>$${maxRent.toLocaleString()}</span>
       </div>
     </div>`;
