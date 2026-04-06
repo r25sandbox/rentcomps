@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v3.0</title>
+<title>RentalComp Intelligence v3.1</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -221,6 +221,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v3.1  2026-04-05  Signal: Above comp estimate (not range), DOM restored to subject popup
+                     // Commit: fix signal wording + restore DOM in subject popup
    v3.0  2026-04-05  Slider: remove label above, marker always asking-red, included count red <5
                      // Commit: cleaner slider - asking-red marker, red warning when <5 comps
    v2.9  2026-04-05  Fix desktop popup estimate: recalculate on popupopen
@@ -361,9 +363,10 @@ function placeSubject(s) {
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
         <span style="font-size:17px;font-weight:600;color:#c8522a;font-family:'DM Mono',monospace;">$${displayPrice.toLocaleString()}/mo</span>
         ${isActive?'<span style="background:#dff2e8;color:#2a7a4a;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:0.04em;">Active</span>':''}
+        ${s.dom?`<span style="font-size:10px;color:#9ca3af;">${s.dom} DOM</span>`:''}
       </div>
       ${s.askingPrice
-        ? `<div style="font-size:10px;color:#9ca3af;">${s.dom?s.dom+' DOM · ':''}Source: ${s.priceSource==='zillow'?'<span style="color:#006aff;font-weight:600;">Zillow live</span>':'Rentcast'} · Rentcast est: $${s.rent.toLocaleString()}</div>
+        ? `<div style="font-size:10px;color:#9ca3af;">Source: ${s.priceSource==='zillow'?'<span style="color:#006aff;font-weight:600;">Zillow live</span>':'Rentcast'} · Rentcast est: $${s.rent.toLocaleString()}</div>
            <div style="font-size:10px;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:4px 8px;margin-top:6px;line-height:1.5;">⚠ Verify on <a href="${zillowUrl(s.address)}" target="_blank" style="color:#92400e;font-weight:600;text-decoration:underline;">Zillow</a> — may have changed.</div>`
         : `<div style="font-size:10px;color:#9ca3af;">Rentcast estimate · Range: $${s.rentRangeLow.toLocaleString()} – $${s.rentRangeHigh.toLocaleString()}</div>`
       }
@@ -596,7 +599,7 @@ function updateCompEstimate(included, median, minRent, maxRent) {
   const gap = subjectPrice - compEstimate;
   const gapPct = compEstimate > 0 ? (gap / compEstimate) * 100 : 0;
   const color = gapPct <= 5 ? '#16a34a' : gapPct <= 15 ? '#c9a84c' : '#dc2626';
-  const signal = gapPct <= 5 ? 'Well priced' : gapPct <= 15 ? 'Slightly above comps' : 'Above comp range';
+  const signal = gapPct <= 5 ? 'Well priced' : gapPct <= 15 ? 'Slightly above estimate' : 'Above comp estimate';
 
   const pct = Math.max(0, Math.min(100, ((subjectPrice-minRent)/(maxRent-minRent))*100));
 
