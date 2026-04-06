@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v3.3</title>
+<title>RentalComp Intelligence v3.5</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -221,7 +221,11 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v3.3  2026-04-05  Fix dual markers: navy taller, red on top, neutral track, always both visible
+   v3.5  2026-04-05  Delta label: asking vs comp est diff, red if over, green if under
+                     // Commit: show asking vs estimate delta on slider
+   v3.4  2026-04-05  Remove duplicate price labels below slider
+                     // Commit: less is more - remove redundant slider labels
+   v3.3  2026-04-05  Fix dual markers: navy taller, red on top, neutral track
                      // Commit: fix navy comp marker hidden behind red asking marker
    v3.2  2026-04-05  Two markers on slider: red=asking, navy=comp estimate
                      // Commit: dual markers on slider - asking vs comp estimate visual
@@ -633,12 +637,9 @@ function updateCompEstimate(included, median, minRent, maxRent) {
         <div style="position:absolute;top:-5px;left:calc(${compPct}% - 5px);width:10px;height:16px;background:#1a4f8c;border-radius:2px;z-index:1;"></div>
         <div style="position:absolute;top:-2px;left:calc(${pct}% - 5px);width:10px;height:10px;background:#c8522a;border-radius:2px;z-index:2;"></div>
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:9px;color:#9ca3af;margin-top:5px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:9px;color:#9ca3af;margin-top:5px;">
         <span>$${minRent.toLocaleString()}</span>
-        <span style="display:flex;gap:10px;">
-          <span style="color:#1a4f8c;font-weight:700;">$${compEstimate.toLocaleString()}</span>
-          <span style="color:#c8522a;font-weight:700;">$${subjectPrice.toLocaleString()}</span>
-        </span>
+        <span style="font-size:11px;font-weight:700;font-family:'DM Mono',monospace;color:${gap>0?'#dc2626':'#16a34a'};">${gap>0?'+':'-'}$${Math.abs(gap).toLocaleString()}</span>
         <span>$${maxRent.toLocaleString()}</span>
       </div>
     </div>`;
