@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v3.8</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<title>RentalComp Intelligence v3.9</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -222,7 +222,9 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v3.8  2026-04-06  Fix nested backtick syntax error in generateReport excluded section
+   v3.9  2026-04-06  Switch Leaflet CDN from unpkg to cdnjs (allowlisted)
+                     // Commit: fix map not loading - switch to cdnjs for Leaflet
+   v3.8  2026-04-06  Fix nested backtick syntax error in generateReport
                      // Commit: fix nested backtick breaking JS parser in PDF report
    v3.7  2026-04-06  Fix SyntaxError: DOMContentLoaded wrapper lost during generateReport insert
                      // Commit: fix syntax error breaking entire app
