@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v4.4</title>
+<title>RentalComp Intelligence v4.5</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -71,15 +71,14 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
   flex-shrink: 0; transition: background 0.15s; user-select: none; position: relative;
 }
 .btn-toggle:hover { background: var(--border); }
-.btn-toggle span {
+#toggle-btn span {
   display: block; width: 14px; height: 2px; background: var(--text2);
   border-radius: 2px; transition: transform 0.25s ease, opacity 0.2s ease;
   transform-origin: center; pointer-events: none;
 }
-/* gap=4px + height=2px → center-to-center = 6px */
-.btn-toggle.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
-.btn-toggle.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
-.btn-toggle.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+#toggle-btn.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+#toggle-btn.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+#toggle-btn.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 
 .panel-body { flex: 1; overflow-y: auto; background: var(--surface); padding: 12px; }
 
@@ -233,6 +232,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v4.5  2026-04-07  Fix hamburger CSS: scope to #toggle-btn span, was hitting all spans in page
+                     // Commit: fix hamburger X - CSS was targeting wrong spans
    v4.4  2026-04-07  Fix hamburger X: sync open class on auto-expand, fix transform values
                      // Commit: fix hamburger not showing X - sync with auto-expand and fix CSS
    v4.3  2026-04-07  Hamburger animates to X on open, back to ☰ on close
