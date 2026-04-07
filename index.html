@@ -222,9 +222,9 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v3.9  2026-04-06  Switch Leaflet CDN from unpkg to cdnjs (allowlisted)
-                     // Commit: fix map not loading - switch to cdnjs for Leaflet
-   v3.8  2026-04-06  Fix nested backtick syntax error in generateReport
+   v3.9  2026-04-06  Fix all nested backticks (WebKit parser issue): placeSubject + mapUrl + generateReport
+                     // Commit: fix nested backticks causing silent parse failure in Safari/WebKit
+   v3.8  2026-04-06  Fix nested backtick in generateReport excluded section
                      // Commit: fix nested backtick breaking JS parser in PDF report
    v3.7  2026-04-06  Fix SyntaxError: DOMContentLoaded wrapper lost during generateReport insert
                      // Commit: fix syntax error breaking entire app
@@ -366,32 +366,35 @@ async function doSearch() {
 
 function placeSubject(s) {
   subjectMarker=L.marker([s.lat,s.lng],{icon:subjectIcon(),zIndexOffset:1000}).addTo(map);
-  const bedsStr=s.bedrooms?`${s.bedrooms} bd / ${s.bathrooms} ba`:'';
+  const bedsStr=s.bedrooms?(s.bedrooms+' bd / '+s.bathrooms+' ba'):'';
   const sqftStr=s.squareFootage?s.squareFootage.toLocaleString()+' sqft':'';
   const ppsf=(s.squareFootage&&s.rent)?'$'+(s.rent/s.squareFootage).toFixed(2)+'/sqft':'';
   const displayPrice=s.askingPrice||s.rent;
   const isActive=s.isActive;
+  const domSpan = s.dom ? '<span style="font-size:10px;color:#9ca3af;">'+s.dom+' DOM</span>' : '';
+  const activeBadge = isActive ? '<span style="background:#dff2e8;color:#2a7a4a;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:0.04em;">Active</span>' : '';
+  const sourceStr = s.priceSource==='zillow' ? '<span style="color:#006aff;font-weight:600;">Zillow live</span>' : 'Rentcast';
+  const askingBlock = s.askingPrice
+    ? '<div style="font-size:10px;color:#9ca3af;">Source: '+sourceStr+' · Rentcast est: $'+s.rent.toLocaleString()+'</div>'
+      +'<div style="font-size:10px;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:4px 8px;margin-top:6px;line-height:1.5;">⚠ Verify on <a href="'+zillowUrl(s.address)+'" target="_blank" style="color:#92400e;font-weight:600;text-decoration:underline;">Zillow</a> — may have changed.</div>'
+    : '<div style="font-size:10px;color:#9ca3af;">Rentcast estimate · Range: $'+s.rentRangeLow.toLocaleString()+' – $'+s.rentRangeHigh.toLocaleString()+'</div>';
+  const metaRow = [bedsStr,sqftStr,ppsf].filter(Boolean).join(' · ');
   const div=document.createElement('div');
-  div.innerHTML=`
-    <div class="popup-rent">Subject Property</div>
-    <div class="popup-addr">${s.address}</div>
-    <div class="popup-row">${[bedsStr,sqftStr,ppsf].filter(Boolean).join(' · ')}</div>
-    <div class="popup-row">${s.propertyType||'SFR'}</div>
-    <div style="margin-top:8px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
-        <span style="font-size:17px;font-weight:600;color:#c8522a;font-family:'DM Mono',monospace;">$${displayPrice.toLocaleString()}/mo</span>
-        ${isActive?'<span style="background:#dff2e8;color:#2a7a4a;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:0.04em;">Active</span>':''}
-        ${s.dom?`<span style="font-size:10px;color:#9ca3af;">${s.dom} DOM</span>`:''}
-      </div>
-      ${s.askingPrice
-        ? `<div style="font-size:10px;color:#9ca3af;">Source: ${s.priceSource==='zillow'?'<span style="color:#006aff;font-weight:600;">Zillow live</span>':'Rentcast'} · Rentcast est: $${s.rent.toLocaleString()}</div>
-           <div style="font-size:10px;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:4px 8px;margin-top:6px;line-height:1.5;">⚠ Verify on <a href="${zillowUrl(s.address)}" target="_blank" style="color:#92400e;font-weight:600;text-decoration:underline;">Zillow</a> — may have changed.</div>`
-        : `<div style="font-size:10px;color:#9ca3af;">Rentcast estimate · Range: $${s.rentRangeLow.toLocaleString()} – $${s.rentRangeHigh.toLocaleString()}</div>`
-      }
-    </div>
-    <div id="subj-popup-estimate" style="margin-top:8px;"></div>
-    <div class="ph-wrap"><div class="ph-title">Price history</div><div id="subj-hist" class="ph-loading">Loading…</div></div>
-    ${zillowLink(s.address)}`;
+  div.innerHTML=
+    '<div class="popup-rent">Subject Property</div>'
+    +'<div class="popup-addr">'+s.address+'</div>'
+    +'<div class="popup-row">'+metaRow+'</div>'
+    +'<div class="popup-row">'+(s.propertyType||'SFR')+'</div>'
+    +'<div style="margin-top:8px;">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">'
+        +'<span style="font-size:17px;font-weight:600;color:#c8522a;font-family:\'DM Mono\',monospace;">$'+displayPrice.toLocaleString()+'/mo</span>'
+        +activeBadge+domSpan
+      +'</div>'
+      +askingBlock
+    +'</div>'
+    +'<div id="subj-popup-estimate" style="margin-top:8px;"></div>'
+    +'<div class="ph-wrap"><div class="ph-title">Price history</div><div id="subj-hist" class="ph-loading">Loading…</div></div>'
+    +zillowLink(s.address);
   subjectMarker.bindPopup(L.popup({maxWidth:300}).setContent(div));
   subjectMarker.on('popupopen',()=>{
     fetchRentHistory(s.address,'subj-hist');
@@ -745,7 +748,8 @@ function generateReport() {
   const gapColor = gap > 0 ? '#dc2626' : '#16a34a';
   const pct = Math.max(0,Math.min(100,((subjectPrice-minRent)/(maxRent-minRent))*100));
   const compPct = Math.max(0,Math.min(100,((compEstimate-minRent)/(maxRent-minRent))*100));
-  const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${currentSubject.lat},${currentSubject.lng}&zoom=14&size=800x300&maptype=roadmap&markers=color:red%7C${currentSubject.lat},${currentSubject.lng}${included.map(c=>`&markers=color:blue%7C${c.latitude},${c.longitude}`).join('')}&key=`;
+  const mapMarkers = included.map(c=>'&markers=color:blue%7C'+c.latitude+','+c.longitude).join('');
+  const mapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center='+currentSubject.lat+','+currentSubject.lng+'&zoom=14&size=800x300&maptype=roadmap&markers=color:red%7C'+currentSubject.lat+','+currentSubject.lng+mapMarkers+'&key=';
   const date = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
 
   const compRows = [...included].sort((a,b)=>b.price-a.price).map(c=>{
