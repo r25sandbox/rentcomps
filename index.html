@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v4.5</title>
+<title>RentalComp Intelligence v4.6</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -67,18 +67,11 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 .btn-toggle {
   width: 28px; height: 28px; border-radius: 7px;
   border: 1px solid var(--border); background: var(--surface2);
-  cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  flex-shrink: 0; transition: background 0.15s; user-select: none; position: relative;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background 0.15s; user-select: none;
+  font-size: 16px; color: var(--text2);
 }
 .btn-toggle:hover { background: var(--border); }
-#toggle-btn span {
-  display: block; width: 14px; height: 2px; background: var(--text2);
-  border-radius: 2px; transition: transform 0.25s ease, opacity 0.2s ease;
-  transform-origin: center; pointer-events: none;
-}
-#toggle-btn.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
-#toggle-btn.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
-#toggle-btn.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 
 .panel-body { flex: 1; overflow-y: auto; background: var(--surface); padding: 12px; }
 
@@ -178,9 +171,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
     <div class="panel-top">
       <input type="text" id="addr-input" placeholder="Enter property address…" value="10394 E Morning Star Dr, Scottsdale, AZ 85255" />
       <button class="btn-go" id="search-btn" onclick="doSearch()">Go</button>
-      <div class="btn-toggle" id="toggle-btn" onclick="togglePanel()" aria-label="Toggle menu">
-        <span></span><span></span><span></span>
-      </div>
+      <div class="btn-toggle" id="toggle-btn" onclick="togglePanel()" aria-label="Toggle menu" style="font-size:16px;letter-spacing:-1px;">☰</div>
       <div class="btn-toggle" id="pdf-btn" onclick="generateReport()" title="Export PDF report" style="display:none;">⬇</div>
     </div>
     <div class="panel-body">
@@ -232,7 +223,9 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v4.5  2026-04-07  Fix hamburger CSS: scope to #toggle-btn span, was hitting all spans in page
+   v4.6  2026-04-07  Hamburger/X: swap textContent ☰↔✕, bulletproof vs CSS span approach
+                     // Commit: fix hamburger X - swap text directly instead of CSS transforms
+   v4.5  2026-04-07  Fix hamburger CSS: scope to #toggle-btn span
                      // Commit: fix hamburger X - CSS was targeting wrong spans
    v4.4  2026-04-07  Fix hamburger X: sync open class on auto-expand, fix transform values
                      // Commit: fix hamburger not showing X - sync with auto-expand and fix CSS
@@ -330,7 +323,7 @@ function togglePanel() {
   const btn = document.getElementById('toggle-btn');
   p.classList.toggle('open', panelOpen);
   p.classList.toggle('collapsed', !panelOpen);
-  btn.classList.toggle('open', panelOpen);
+  btn.textContent = panelOpen ? '✕' : '☰';
 }
 
 function subjectIcon() { return L.divIcon({className:'',html:`<div style="width:22px;height:22px;border-radius:50%;background:#c8522a;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>`,iconSize:[22,22],iconAnchor:[11,11]}); }
@@ -385,7 +378,7 @@ async function doSearch() {
     const p=document.getElementById('panel');
     p.classList.remove('collapsed');
     p.classList.add('open');
-    document.getElementById('toggle-btn').classList.add('open');
+    document.getElementById('toggle-btn').textContent='✕';
   } catch(err) { setStatus('error',err.message); }
   finally { document.getElementById('search-btn').disabled=false; }
 }
