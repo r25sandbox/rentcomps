@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v4.6</title>
+<title>RentalComp Intelligence v4.7</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -223,7 +223,9 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v4.6  2026-04-07  Hamburger/X: swap textContent ☰↔✕, bulletproof vs CSS span approach
+   v4.7  2026-04-07  Move zoom control to bottom-right, away from panel
+                     // Commit: move zoom controls to bottom-right corner
+   v4.6  2026-04-07  Hamburger/X: swap textContent ☰↔✕
                      // Commit: fix hamburger X - swap text directly instead of CSS transforms
    v4.5  2026-04-07  Fix hamburger CSS: scope to #toggle-btn span
                      // Commit: fix hamburger X - CSS was targeting wrong spans
@@ -311,8 +313,9 @@ const MOCK_COMPS = [
 let map, subjectMarker, allComps=[], compMarkers={}, currentSubject=null, panelOpen=false;
 
 function initMap() {
-  map = L.map('map',{zoomControl:true}).setView([33.4484,-112.0740],11);
+  map = L.map('map',{zoomControl:false}).setView([33.4484,-112.0740],11);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',maxZoom:19}).addTo(map);
+  L.control.zoom({position:'bottomright'}).addTo(map);
   map.on('moveend zoomend', renderVisible);
   setTimeout(()=>map.invalidateSize(),300);
 }
