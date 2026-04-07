@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v3.6</title>
+<title>RentalComp Intelligence v3.7</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -222,6 +222,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v3.7  2026-04-06  Fix SyntaxError: DOMContentLoaded wrapper lost during generateReport insert
+                     // Commit: fix syntax error breaking entire app
    v3.6  2026-04-05  PDF report: print-ready page with stats, estimate tiles, slider, comp table
                      // Commit: add PDF export report with full comp breakdown
    v3.5  2026-04-05  Delta label between range endpoints: red if over, green if under
@@ -865,7 +867,8 @@ function generateReport() {
   w.document.close();
   setTimeout(()=>w.print(), 800);
 }
-  initMap();
+
+document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('stats-strip').classList.add('visible');
   document.getElementById('addr-input').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
   setTimeout(doSearch,800);
