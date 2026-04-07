@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v4.1</title>
+<title>RentalComp Intelligence v4.2</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -223,6 +223,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v4.2  2026-04-07  PDF light theme: white bg, navy accents, readable on paper
+                     // Commit: fix PDF styles for white background - light theme
    v4.1  2026-04-06  Fix iframe height: html {height:100%}, invalidateSize after init
                      // Commit: fix map blank in iframe - height and invalidateSize
    v4.0  2026-04-06  Fix initMap missing from DOMContentLoaded, try/catch error display, zoom controls
@@ -792,33 +794,36 @@ function generateReport() {
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:'DM Sans',sans-serif;color:#1a1814;background:#fff;padding:32px;max-width:900px;margin:0 auto;}
     @media print{body{padding:16px;}@page{margin:16mm;}}
-    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #c9a84c;}
-    .brand{font-size:20px;font-weight:600;color:#0d1b2e;} .brand span{color:#c9a84c;}
-    .date{font-size:12px;color:#9ca3af;}
-    .subject-block{background:#0d1b2e;color:#fff;border-radius:12px;padding:20px 24px;margin-bottom:20px;}
-    .s-addr{font-size:16px;font-weight:600;margin-bottom:6px;}
-    .s-meta{font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:12px;}
-    .s-price{font-size:28px;font-weight:700;color:#c9a84c;font-family:'DM Mono',monospace;}
-    .s-badge{display:inline-block;background:#dff2e8;color:#2a7a4a;font-size:10px;font-weight:700;padding:2px 10px;border-radius:10px;text-transform:uppercase;margin-left:10px;vertical-align:middle;}
-    .s-dom{font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px;}
-    .tiles{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px;}
-    .tile{background:#f9f8f5;border-radius:8px;padding:12px;text-align:center;}
-    .tile-lbl{font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#9ca3af;font-weight:700;margin-bottom:4px;}
-    .tile-val{font-size:18px;font-weight:700;font-family:'DM Mono',monospace;}
-    .estimate-tiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;}
-    .slider-wrap{padding:8px 0;margin-bottom:20px;}
-    .slider-row{display:flex;justify-content:space-between;font-size:10px;color:#9ca3af;margin-bottom:4px;}
+    .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #0d1b2e;}
+    .brand{font-size:22px;font-weight:700;color:#0d1b2e;letter-spacing:-0.01em;} .brand span{color:#c9a84c;}
+    .date{font-size:11px;color:#6b6660;}
+    .subject-block{background:#f4f2ec;border-left:4px solid #0d1b2e;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:20px;}
+    .s-addr{font-size:15px;font-weight:700;color:#0d1b2e;margin-bottom:4px;}
+    .s-meta{font-size:11px;color:#6b6660;margin-bottom:10px;}
+    .s-price{font-size:26px;font-weight:700;color:#c8522a;font-family:'DM Mono',monospace;}
+    .s-badge{display:inline-block;background:#dff2e8;color:#2a7a4a;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;margin-left:8px;vertical-align:middle;}
+    .s-dom{font-size:11px;color:#6b6660;margin-top:4px;}
+    .tiles{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:16px;}
+    .tile{background:#f9f8f5;border:1px solid #e5e0d8;border-radius:8px;padding:10px;text-align:center;}
+    .tile-lbl{font-size:8px;text-transform:uppercase;letter-spacing:0.08em;color:#9c9690;font-weight:700;margin-bottom:4px;}
+    .tile-val{font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:#1a1814;}
+    .estimate-tiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;}
+    .etile{background:#f9f8f5;border:1px solid #e5e0d8;border-radius:8px;padding:10px;text-align:center;}
+    .etile-lbl{font-size:8px;text-transform:uppercase;letter-spacing:0.08em;color:#9c9690;font-weight:700;margin-bottom:4px;}
+    .slider-wrap{background:#f9f8f5;border:1px solid #e5e0d8;border-radius:8px;padding:12px 16px;margin-bottom:20px;}
+    .slider-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:10px;color:#9c9690;}
     .slider-track{position:relative;height:6px;background:#e5e7eb;border-radius:3px;}
     .slider-navy{position:absolute;top:-5px;width:10px;height:16px;background:#1a4f8c;border-radius:2px;left:calc(${compPct}% - 5px);}
     .slider-red{position:absolute;top:-2px;width:10px;height:10px;background:#c8522a;border-radius:2px;left:calc(${pct}% - 5px);}
-    .slider-labels{display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:#9ca3af;}
-    .delta{text-align:center;font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:${gapColor};}
-    h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#9ca3af;margin:20px 0 10px;}
-    table{width:100%;border-collapse:collapse;font-size:12px;}
-    th{background:#f4f2ec;text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#9ca3af;font-weight:700;}
-    td{padding:8px 10px;border-bottom:1px solid #f0ede6;}
+    .slider-labels{display:flex;justify-content:space-between;margin-top:8px;font-size:9px;color:#9c9690;}
+    .delta{font-size:12px;font-weight:700;font-family:'DM Mono',monospace;color:${gapColor};}
+    h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6b6660;margin:20px 0 8px;padding-bottom:4px;border-bottom:1px solid #e5e0d8;}
+    table{width:100%;border-collapse:collapse;font-size:11px;}
+    th{background:#f4f2ec;text-align:left;padding:7px 10px;font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#6b6660;font-weight:700;border-bottom:2px solid #e5e0d8;}
+    td{padding:7px 10px;border-bottom:1px solid #f0ede6;color:#1a1814;}
+    tr:nth-child(even) td{background:#faf9f7;}
     tr:last-child td{border-bottom:none;}
-    .footer{margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:10px;color:#9ca3af;display:flex;justify-content:space-between;}
+    .footer{margin-top:24px;padding-top:12px;border-top:1px solid #e5e0d8;font-size:9px;color:#9c9690;display:flex;justify-content:space-between;}
   </style>
   </head><body>
   <div class="header">
@@ -844,9 +849,9 @@ function generateReport() {
   </div>
 
   <div class="estimate-tiles">
-    <div class="tile"><div class="tile-lbl">Asking</div><div class="tile-val" style="color:#c8522a;">$${subjectPrice.toLocaleString()}</div></div>
-    <div class="tile"><div class="tile-lbl">Comp est.</div><div class="tile-val" style="color:#1a4f8c;">$${compEstimate.toLocaleString()}</div></div>
-    <div class="tile"><div class="tile-lbl">Rentcast</div><div class="tile-val" style="color:#888;">$${currentSubject.rent.toLocaleString()}</div></div>
+    <div class="etile"><div class="etile-lbl">Asking</div><div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:#c8522a;">$${subjectPrice.toLocaleString()}</div></div>
+    <div class="etile"><div class="etile-lbl">Comp est.</div><div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:#1a4f8c;">$${compEstimate.toLocaleString()}</div></div>
+    <div class="etile"><div class="etile-lbl">Rentcast</div><div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:#6b6660;">$${currentSubject.rent.toLocaleString()}</div></div>
   </div>
 
   <div class="slider-wrap">
