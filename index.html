@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v4.0</title>
+<title>RentalComp Intelligence v4.1</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -17,7 +17,8 @@
   --blue: #1a4f8c; --purple: #5c35a0; --green: #2a7a4a;
   --radius: 12px; --font: 'DM Sans', sans-serif; --mono: 'DM Mono', monospace;
 }
-body { font-family: var(--font); background: var(--navy); margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+html { height: 100%; }
+body { font-family: var(--font); background: var(--navy); margin: 0; height: 100%; min-height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
 /* Header */
 header { background: var(--navy); border-bottom: 2px solid var(--gold); padding: 11px 20px; display: flex; align-items: center; flex-shrink: 0; z-index: 2000; }
@@ -222,7 +223,9 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v4.0  2026-04-06  Fix initMap missing from DOMContentLoaded, add try/catch error display, zoom controls
+   v4.1  2026-04-06  Fix iframe height: html {height:100%}, invalidateSize after init
+                     // Commit: fix map blank in iframe - height and invalidateSize
+   v4.0  2026-04-06  Fix initMap missing from DOMContentLoaded, try/catch error display, zoom controls
                      // Commit: fix blank map - initMap was missing from DOMContentLoaded
    v3.9  2026-04-06  Fix all nested backticks causing silent WebKit parse failure
                      // Commit: fix nested backticks causing silent parse failure in Safari/WebKit
@@ -301,6 +304,7 @@ function initMap() {
   map = L.map('map',{zoomControl:true}).setView([33.4484,-112.0740],11);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',maxZoom:19}).addTo(map);
   map.on('moveend zoomend', renderVisible);
+  setTimeout(()=>map.invalidateSize(),300);
 }
 
 function togglePanel() {
