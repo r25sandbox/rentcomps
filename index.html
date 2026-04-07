@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v3.7</title>
+<title>RentalComp Intelligence v3.8</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -222,6 +222,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v3.8  2026-04-06  Fix nested backtick syntax error in generateReport excluded section
+                     // Commit: fix nested backtick breaking JS parser in PDF report
    v3.7  2026-04-06  Fix SyntaxError: DOMContentLoaded wrapper lost during generateReport insert
                      // Commit: fix syntax error breaking entire app
    v3.6  2026-04-05  PDF report: print-ready page with stats, estimate tiles, slider, comp table
@@ -850,11 +852,7 @@ function generateReport() {
     <tbody>${compRows}</tbody>
   </table>
 
-  ${excl.length ? `<h2>Excluded comps (${excl.length})</h2>
-  <table>
-    <thead><tr><th>Address</th><th>Bd/Ba</th><th>Sqft</th><th>Rent</th><th>$/sqft</th><th>DOM</th><th>Status</th><th>Distance</th></tr></thead>
-    <tbody>${exclRows}</tbody>
-  </table>` : ''}
+  ${excl.length ? '<h2>Excluded comps (' + excl.length + ')</h2><table><thead><tr><th>Address</th><th>Bd/Ba</th><th>Sqft</th><th>Rent</th><th>$/sqft</th><th>DOM</th><th>Status</th><th>Distance</th></tr></thead><tbody>' + exclRows + '</tbody></table>' : ''}
 
   <div class="footer">
     <span>RentalComp Intelligence · Realty 25 AZ · Alik Levin, Broker</span>
