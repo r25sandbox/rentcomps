@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v4.7</title>
+<title>RentalComp Intelligence v4.8</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -111,6 +111,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
   display: none; flex-direction: column;
 }
 .stats-strip.visible { display: flex; }
+/* Push Leaflet zoom controls above the stats strip */
+.leaflet-bottom.leaflet-right { bottom: 75px !important; }
 .stats-row { display: flex; align-items: center; justify-content: space-around; padding: 8px 16px; }
 .legend-row {
   display: flex; align-items: center; justify-content: center;
@@ -223,7 +225,9 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v4.7  2026-04-07  Move zoom control to bottom-right, away from panel
+   v4.8  2026-04-07  Zoom controls offset 75px above stats strip
+                     // Commit: fix zoom controls hidden behind stats bar
+   v4.7  2026-04-07  Move zoom control to bottom-right away from panel
                      // Commit: move zoom controls to bottom-right corner
    v4.6  2026-04-07  Hamburger/X: swap textContent ☰↔✕
                      // Commit: fix hamburger X - swap text directly instead of CSS transforms
