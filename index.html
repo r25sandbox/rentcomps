@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.2</title>
+<title>RentalComp Intelligence v5.3</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -264,6 +264,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.3  2026-04-08  Add console debug logging to doSearch to diagnose mock data issue
+                     // Commit: add debug logging to trace mock vs live path
    v5.2  2026-04-08  Fix stale cache serving mock data: validate lat/lng before using cache
                      // Commit: fix cache serving stale mock data - validate before use
    v5.1  2026-04-08  PDF slider: SVG instead of absolute CSS for print compatibility
@@ -516,6 +518,7 @@ async function doSearch() {
 
   try {
     let subject,comps;
+    console.log('doSearch: apiKey=', apiKey ? apiKey.substring(0,30)+'...' : 'EMPTY', 'accessKey=', accessKey);
     if(apiKey) {
       const base=apiKey.replace(/\/$/,'');
 
@@ -1087,7 +1090,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     initMap();
     document.getElementById('stats-strip').classList.add('visible');
     document.getElementById('addr-input').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
-    initAccess(); // check key, show gate or proceed
+    initAccess(); // triggers doSearch after key validated
   } catch(e) {
     document.body.insertAdjacentHTML('afterbegin','<div style="position:fixed;top:0;left:0;right:0;background:#dc2626;color:white;padding:10px;font-size:12px;z-index:99999;font-family:monospace;">ERROR: '+e.message+'</div>');
   }
