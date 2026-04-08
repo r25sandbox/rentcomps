@@ -111,7 +111,9 @@ async function loadRequests() {
   tbody.innerHTML = '<tr><td colspan="5" class="empty">Loading…</td></tr>';
   try {
     const data = await api('/admin/requests');
-    if (!data.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No requests yet.</td></tr>'; return; }
+    console.log('requests response:', data);
+    if (data.error) { tbody.innerHTML = '<tr><td colspan="5" class="empty" style="color:#f87171;">API error: '+data.error+'</td></tr>'; return; }
+    if (!Array.isArray(data) || !data.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No requests yet.</td></tr>'; return; }
     tbody.innerHTML = data.map(r => {
       const date = new Date(r.requestedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
       const badge = r.status === 'approved'
@@ -120,11 +122,12 @@ async function loadRequests() {
       const action = r.status === 'pending'
         ? '<input class="days-input" type="number" value="7" min="1" max="90" id="days-'+btoa(r.email).replace(/=/g,'')+'" />'
           + '<button class="btn-green" onclick="approve(\''+r.email+'\')">Approve</button>'
-        : '<span style="color:#6b6660;font-size:11px;">Key: '+( r.key||'—')+'</span>';
+        : '<span style="color:#6b6660;font-size:11px;">Key: '+(r.key||'—')+'</span>';
       return '<tr><td>'+r.email+'</td><td>'+date+'</td><td>'+badge+'</td><td></td><td>'+action+'</td></tr>';
     }).join('');
   } catch(e) {
     tbody.innerHTML = '<tr><td colspan="5" class="empty" style="color:#f87171;">Error: '+e.message+'</td></tr>';
+    console.error('loadRequests error:', e);
   }
 }
 
