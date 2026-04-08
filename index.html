@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.1</title>
+<title>RentalComp Intelligence v5.2</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -264,7 +264,9 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v5.1  2026-04-08  PDF slider: replace CSS absolute positioning with SVG for print compatibility
+   v5.2  2026-04-08  Fix stale cache serving mock data: validate lat/lng before using cache
+                     // Commit: fix cache serving stale mock data - validate before use
+   v5.1  2026-04-08  PDF slider: SVG instead of absolute CSS for print compatibility
                      // Commit: fix PDF slider missing - use SVG instead of absolute CSS
    v5.0  2026-04-08  Search result cache (localStorage), unique address tracking, address limits
                      // Commit: cache full search results, unique address tracking + limits
@@ -517,13 +519,14 @@ async function doSearch() {
     if(apiKey) {
       const base=apiKey.replace(/\/$/,'');
 
-      // Check search cache first
+      // Check search cache first (only use if it's live data with real coordinates)
       const searchCache = loadSearchCache();
       const cacheKey = addr.trim().toLowerCase();
-      if (searchCache[cacheKey]) {
-        setStatus('ok','Cached · '+searchCache[cacheKey].comps.length+' comps');
-        subject = searchCache[cacheKey].subject;
-        comps = searchCache[cacheKey].comps;
+      const cached = searchCache[cacheKey];
+      if (cached && cached.subject && cached.subject.lat && cached.comps && cached.comps.length) {
+        setStatus('ok','Cached · '+cached.comps.length+' comps');
+        subject = cached.subject;
+        comps = cached.comps;
       } else {
         setStatus('loading','Calling Rentcast…');
         const params=new URLSearchParams({address:addr,propertyType:'Single Family',compCount:20});
