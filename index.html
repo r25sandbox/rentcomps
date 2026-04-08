@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.0</title>
+<title>RentalComp Intelligence v4.9</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -264,9 +264,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v5.0  2026-04-08  Search result cache (localStorage), unique address tracking, address limits
-                     // Commit: cache full search results, unique address tracking + limits
-   v4.9  2026-04-07  Access gate: email request, KV key validation, magic link, localStorage cache
+   v4.9  2026-04-07  Access gate: email request, KV key validation, magic link, localStorage cache persist
                      // Commit: add access control gate + localStorage history cache
    v4.8  2026-04-07  Zoom controls offset 75px above stats strip
                      // Commit: fix zoom controls hidden behind stats bar
@@ -437,8 +435,6 @@ async function submitManualKey() {
 
 // ── localStorage cache for history ──
 const CACHE_KEY = 'rc_history_cache';
-const SEARCH_CACHE_KEY = 'rc_search_cache';
-
 function loadCacheFromStorage() {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
@@ -447,12 +443,6 @@ function loadCacheFromStorage() {
 }
 function saveCacheToStorage() {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify(historyCache)); } catch(e) {}
-}
-function loadSearchCache() {
-  try { return JSON.parse(localStorage.getItem(SEARCH_CACHE_KEY) || '{}'); } catch(e) { return {}; }
-}
-function saveSearchCache(cache) {
-  try { localStorage.setItem(SEARCH_CACHE_KEY, JSON.stringify(cache)); } catch(e) {}
 }
 
 const MOCK_SUBJECT = {
@@ -514,38 +504,26 @@ async function doSearch() {
     let subject,comps;
     if(apiKey) {
       const base=apiKey.replace(/\/$/,'');
-
-      // Check search cache first
-      const searchCache = loadSearchCache();
-      const cacheKey = addr.trim().toLowerCase();
-      if (searchCache[cacheKey]) {
-        setStatus('ok','Cached · '+searchCache[cacheKey].comps.length+' comps');
-        subject = searchCache[cacheKey].subject;
-        comps = searchCache[cacheKey].comps;
-      } else {
-        setStatus('loading','Calling Rentcast…');
-        const params=new URLSearchParams({address:addr,propertyType:'Single Family',compCount:20});
-        const res=await fetch(`${base}/rentcast/avm/rent/long-term?${params}`);
-        if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e?.error||`API error ${res.status}`);}
-        const data=await res.json();
-        let propDetails={},listingData={};
-        const [pRes,zRes]=await Promise.allSettled([
-          fetch(`${base}/rentcast/properties?address=${encodeURIComponent(addr)}&limit=1`),
-          fetch(`${base}/zillow-price?address=${encodeURIComponent(addr)}`)
-        ]);
-        if(pRes.status==='fulfilled'&&pRes.value.ok){const d=await pRes.value.json();const r=Array.isArray(d)?d[0]:d;propDetails={bedrooms:r?.bedrooms,bathrooms:r?.bathrooms,squareFootage:r?.squareFootage,propertyType:r?.propertyType};}
-        if(zRes.status==='fulfilled'&&zRes.value.ok){listingData=await zRes.value.json();}
-        subject={address:addr,lat:data.latitude,lng:data.longitude,bedrooms:data.bedrooms||propDetails.bedrooms,bathrooms:data.bathrooms||propDetails.bathrooms,squareFootage:data.squareFootage||propDetails.squareFootage,propertyType:data.propertyType||propDetails.propertyType||'SFR',rent:Math.round(data.rent),rentRangeLow:Math.round(data.rentRangeLow),rentRangeHigh:Math.round(data.rentRangeHigh),askingPrice:listingData.price||null,isActive:listingData.status==='Active',dom:listingData.daysOnMarket||null,priceSource:listingData.source||null};
-        comps=(data.comparables||[]).map((c,i)=>({id:i,formattedAddress:c.formattedAddress||c.address,latitude:c.latitude,longitude:c.longitude,bedrooms:c.bedrooms,bathrooms:c.bathrooms,squareFootage:c.squareFootage,price:Math.round(c.price),status:c.status||'Active',daysOnMarket:c.daysOnMarket||null,propertyType:c.propertyType||'SFR'}));
-        // Save to cache
-        searchCache[cacheKey] = { subject, comps, cachedAt: new Date().toISOString() };
-        saveSearchCache(searchCache);
-        setStatus('ok',`Live · ${comps.length} comps`);
-        // Log unique address for tracking
-        if (accessKey) {
-          fetch(WORKER_URL+'/log-search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:accessKey,address:addr})}).catch(()=>{});
-        }
+      setStatus('loading','Calling Rentcast…');
+      const params=new URLSearchParams({address:addr,propertyType:'Single Family',compCount:20});
+      const res=await fetch(`${base}/rentcast/avm/rent/long-term?${params}`);
+      if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e?.error||`API error ${res.status}`);}
+      const data=await res.json();
+      let propDetails={},listingData={};
+      const [pRes,zRes]=await Promise.allSettled([
+        fetch(`${base}/rentcast/properties?address=${encodeURIComponent(addr)}&limit=1`),
+        fetch(`${base}/zillow-price?address=${encodeURIComponent(addr)}`)
+      ]);
+      if(pRes.status==='fulfilled'&&pRes.value.ok){const d=await pRes.value.json();const r=Array.isArray(d)?d[0]:d;propDetails={bedrooms:r?.bedrooms,bathrooms:r?.bathrooms,squareFootage:r?.squareFootage,propertyType:r?.propertyType};}
+      if(zRes.status==='fulfilled'&&zRes.value.ok){listingData=await zRes.value.json();}
+      subject={address:addr,lat:data.latitude,lng:data.longitude,bedrooms:data.bedrooms||propDetails.bedrooms,bathrooms:data.bathrooms||propDetails.bathrooms,squareFootage:data.squareFootage||propDetails.squareFootage,propertyType:data.propertyType||propDetails.propertyType||'SFR',rent:Math.round(data.rent),rentRangeLow:Math.round(data.rentRangeLow),rentRangeHigh:Math.round(data.rentRangeHigh),askingPrice:listingData.price||null,isActive:listingData.status==='Active',dom:listingData.daysOnMarket||null,priceSource:listingData.source||null};
+      comps=(data.comparables||[]).map((c,i)=>({id:i,formattedAddress:c.formattedAddress||c.address,latitude:c.latitude,longitude:c.longitude,bedrooms:c.bedrooms,bathrooms:c.bathrooms,squareFootage:c.squareFootage,price:Math.round(c.price),status:c.status||'Active',daysOnMarket:c.daysOnMarket||null,propertyType:c.propertyType||'SFR'}));
+      setStatus('ok',`Live · ${comps.length} comps`);
+      // Log search for tracking
+      if (accessKey) {
+        fetch(WORKER_URL+'/log-search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:accessKey,address:addr})}).catch(()=>{});
       }
+    } else {
       await new Promise(r=>setTimeout(r,600));
       subject={...MOCK_SUBJECT,address:addr}; comps=MOCK_COMPS;
       setStatus('ok',`Mock · ${comps.length} comps`);
