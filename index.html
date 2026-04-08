@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v4.8</title>
+<title>RentalComp Intelligence v4.9</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -156,9 +156,48 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 .ph-removed { color: #dc2626 !important; font-weight: 600; }
 .ph-changed { color: #d97706 !important; font-weight: 600; }
 .ph-none { font-size: 11px; color: #9ca3af; }
+.gate {
+  position: fixed; inset: 0; background: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999; padding: 24px;
+}
+.gate-card {
+  background: #162236; border-radius: 16px; padding: 32px 28px;
+  max-width: 380px; width: 100%; text-align: center;
+}
+.gate-logo { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+.gate-logo span { color: var(--gold); }
+.gate-tagline { font-size: 11px; color: rgba(255,255,255,0.35); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 24px; }
+.gate-title { font-size: 15px; font-weight: 600; color: #e5e0d8; margin-bottom: 8px; }
+.gate-sub { font-size: 12px; color: #6b6660; margin-bottom: 20px; line-height: 1.6; }
+.gate-input { width: 100%; padding: 10px 14px; border: 1px solid #2a3a50; border-radius: 9px; background: #0d1b2e; color: #e5e0d8; font-size: 13px; margin-bottom: 10px; outline: none; }
+.gate-input:focus { border-color: var(--gold); }
+.gate-btn { width: 100%; padding: 11px; background: var(--gold); color: var(--navy); border: none; border-radius: 9px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.gate-btn:hover { background: var(--gold2); }
+.gate-msg { font-size: 12px; margin-top: 10px; min-height: 18px; }
+.gate-footer { font-size: 11px; color: #6b6660; margin-top: 20px; line-height: 1.6; }
+.gate-footer a { color: var(--gold); text-decoration: none; }
 </style>
 </head>
 <body>
+
+<!-- Access gate — hidden once key is valid -->
+<div class="gate" id="gate">
+  <div class="gate-card">
+    <div class="gate-logo">Rental<span>Comp</span></div>
+    <div class="gate-tagline">Intelligence</div>
+    <div id="gate-content">
+      <div class="gate-title">Request Access</div>
+      <div class="gate-sub">Enter your email and we'll reach out with your access link.</div>
+      <input class="gate-input" type="email" id="gate-email" placeholder="your@email.com" />
+      <button class="gate-btn" onclick="requestAccess()">Request Access</button>
+      <div class="gate-msg" id="gate-msg"></div>
+    </div>
+    <div class="gate-footer">
+      Already have a link? <a href="#" onclick="showKeyEntry()">Enter access key</a>
+    </div>
+  </div>
+</div>
 
 <header>
   <div class="logo">Rental<span>Comp</span></div>
@@ -225,6 +264,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v4.9  2026-04-07  Access gate: email request, KV key validation, magic link, localStorage cache persist
+                     // Commit: add access control gate + localStorage history cache
    v4.8  2026-04-07  Zoom controls offset 75px above stats strip
                      // Commit: fix zoom controls hidden behind stats bar
    v4.7  2026-04-07  Move zoom control to bottom-right away from panel
@@ -295,6 +336,115 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
    v1.0  2026-04-05  Cloudflare Worker proxy
    v0.1–v0.9  Prototype iterations — mock data, branding, viewport filter, history
 */
+
+// ── Access control ──
+const WORKER_URL = document.getElementById('api-key') ? document.getElementById('api-key').value.trim() : 'https://rentalcomp-proxy.alik-levin.workers.dev';
+let accessKey = null;
+
+async function initAccess() {
+  // Check URL param first
+  const params = new URLSearchParams(window.location.search);
+  const urlKey = params.get('key');
+  if (urlKey) {
+    localStorage.setItem('rc_key', urlKey);
+    // Clean URL without reloading
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+  const storedKey = localStorage.getItem('rc_key');
+  if (storedKey) {
+    const valid = await validateKey(storedKey);
+    if (valid) return; // gate hidden, tool ready
+  }
+  // Show gate
+  document.getElementById('gate').style.display = 'flex';
+}
+
+async function validateKey(key) {
+  try {
+    const res = await fetch(WORKER_URL + '/validate-key?key=' + encodeURIComponent(key));
+    const data = await res.json();
+    if (data.valid) {
+      accessKey = key;
+      document.getElementById('gate').style.display = 'none';
+      setTimeout(doSearch, 800); // auto-search once unlocked
+      return true;
+    } else if (data.reason === 'expired') {
+      showExpired(data.email);
+      return false;
+    }
+    return false;
+  } catch(e) { return false; }
+}
+
+function showExpired(email) {
+  document.getElementById('gate').style.display = 'flex';
+  document.getElementById('gate-content').innerHTML =
+    '<div class="gate-title" style="color:#f87171;">Access Expired</div>'
+    +'<div class="gate-sub">Your access link has expired. Reach out to discuss opportunities.</div>'
+    +'<div style="margin-top:16px;">'
+    +'<a href="mailto:alik@realty25az.com" style="display:inline-block;padding:10px 20px;background:var(--gold);color:var(--navy);border-radius:9px;font-weight:700;font-size:13px;text-decoration:none;">Contact Alik Levin</a>'
+    +'</div>';
+}
+
+async function requestAccess() {
+  const email = document.getElementById('gate-email').value.trim();
+  const msg = document.getElementById('gate-msg');
+  if (!email || !email.includes('@')) { msg.style.color='#f87171'; msg.textContent='Please enter a valid email.'; return; }
+  msg.style.color='#c9a84c'; msg.textContent='Sending request…';
+  try {
+    const res = await fetch(WORKER_URL + '/request-access', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (data.status === 'requested') {
+      msg.style.color='#86efac'; msg.textContent='Request sent! We\'ll be in touch shortly.';
+      document.getElementById('gate-email').disabled = true;
+      document.querySelector('.gate-btn').disabled = true;
+    } else if (data.status === 'already_approved') {
+      msg.style.color='#fcd34d'; msg.textContent='Your email is approved — check your inbox for the access link.';
+    } else if (data.status === 'already_requested') {
+      msg.style.color='#fcd34d'; msg.textContent='Already requested — we\'ll reach out soon.';
+    }
+  } catch(e) {
+    msg.style.color='#f87171'; msg.textContent='Error sending request. Try again.';
+  }
+}
+
+function showKeyEntry() {
+  document.getElementById('gate-content').innerHTML =
+    '<div class="gate-title">Enter Access Key</div>'
+    +'<div class="gate-sub">Paste your access key below.</div>'
+    +'<input class="gate-input" type="text" id="manual-key" placeholder="R25-XXXXXXXX" />'
+    +'<button class="gate-btn" onclick="submitManualKey()">Unlock</button>'
+    +'<div class="gate-msg" id="gate-msg"></div>';
+}
+
+async function submitManualKey() {
+  const key = document.getElementById('manual-key').value.trim();
+  const msg = document.getElementById('gate-msg');
+  if (!key) { msg.style.color='#f87171'; msg.textContent='Please enter a key.'; return; }
+  msg.style.color='#c9a84c'; msg.textContent='Validating…';
+  localStorage.setItem('rc_key', key);
+  const valid = await validateKey(key);
+  if (!valid) {
+    msg.style.color='#f87171'; msg.textContent='Invalid or expired key.';
+    localStorage.removeItem('rc_key');
+  }
+}
+
+// ── localStorage cache for history ──
+const CACHE_KEY = 'rc_history_cache';
+function loadCacheFromStorage() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (raw) Object.assign(historyCache, JSON.parse(raw));
+  } catch(e) {}
+}
+function saveCacheToStorage() {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(historyCache)); } catch(e) {}
+}
+
 const MOCK_SUBJECT = {
   address:"10394 E Morning Star Dr, Scottsdale, AZ 85255", lat:33.6891, lng:-111.8461,
   bedrooms:4, bathrooms:3, squareFootage:2200, propertyType:"SFR",
@@ -369,6 +519,10 @@ async function doSearch() {
       subject={address:addr,lat:data.latitude,lng:data.longitude,bedrooms:data.bedrooms||propDetails.bedrooms,bathrooms:data.bathrooms||propDetails.bathrooms,squareFootage:data.squareFootage||propDetails.squareFootage,propertyType:data.propertyType||propDetails.propertyType||'SFR',rent:Math.round(data.rent),rentRangeLow:Math.round(data.rentRangeLow),rentRangeHigh:Math.round(data.rentRangeHigh),askingPrice:listingData.price||null,isActive:listingData.status==='Active',dom:listingData.daysOnMarket||null,priceSource:listingData.source||null};
       comps=(data.comparables||[]).map((c,i)=>({id:i,formattedAddress:c.formattedAddress||c.address,latitude:c.latitude,longitude:c.longitude,bedrooms:c.bedrooms,bathrooms:c.bathrooms,squareFootage:c.squareFootage,price:Math.round(c.price),status:c.status||'Active',daysOnMarket:c.daysOnMarket||null,propertyType:c.propertyType||'SFR'}));
       setStatus('ok',`Live · ${comps.length} comps`);
+      // Log search for tracking
+      if (accessKey) {
+        fetch(WORKER_URL+'/log-search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:accessKey,address:addr})}).catch(()=>{});
+      }
     } else {
       await new Promise(r=>setTimeout(r,600));
       subject={...MOCK_SUBJECT,address:addr}; comps=MOCK_COMPS;
@@ -546,7 +700,8 @@ async function fetchRentHistory(address,historyDivId) {
     history.sort((a,b)=>new Date(b.date)-new Date(a.date));
     history=history.filter((h,i,arr)=>i===0||!(h.date===arr[i-1].date&&h.event===arr[i-1].event));
     const html=history.length?renderHistoryTable(history):'<div class="ph-none">No history on record</div>';
-    historyCache[address]=html; // cache it
+    historyCache[address]=html; // cache in memory + persist
+    saveCacheToStorage();
     el.innerHTML=html;
   } catch(e){el.innerHTML='<div class="ph-none">History unavailable</div>';}
 }
@@ -903,10 +1058,11 @@ function generateReport() {
 
 document.addEventListener('DOMContentLoaded',()=>{
   try {
+    loadCacheFromStorage();
     initMap();
     document.getElementById('stats-strip').classList.add('visible');
     document.getElementById('addr-input').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
-    setTimeout(doSearch,800);
+    initAccess(); // check key, show gate or proceed
   } catch(e) {
     document.body.insertAdjacentHTML('afterbegin','<div style="position:fixed;top:0;left:0;right:0;background:#dc2626;color:white;padding:10px;font-size:12px;z-index:99999;font-family:monospace;">ERROR: '+e.message+'</div>');
   }
