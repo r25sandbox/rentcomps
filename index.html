@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.3</title>
+<title>RentalComp Intelligence v5.0</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -264,12 +264,6 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v5.3  2026-04-08  Add console debug logging to doSearch to diagnose mock data issue
-                     // Commit: add debug logging to trace mock vs live path
-   v5.2  2026-04-08  Fix stale cache serving mock data: validate lat/lng before using cache
-                     // Commit: fix cache serving stale mock data - validate before use
-   v5.1  2026-04-08  PDF slider: SVG instead of absolute CSS for print compatibility
-                     // Commit: fix PDF slider missing - use SVG instead of absolute CSS
    v5.0  2026-04-08  Search result cache (localStorage), unique address tracking, address limits
                      // Commit: cache full search results, unique address tracking + limits
    v4.9  2026-04-07  Access gate: email request, KV key validation, magic link, localStorage cache
@@ -518,18 +512,16 @@ async function doSearch() {
 
   try {
     let subject,comps;
-    console.log('doSearch: apiKey=', apiKey ? apiKey.substring(0,30)+'...' : 'EMPTY', 'accessKey=', accessKey);
     if(apiKey) {
       const base=apiKey.replace(/\/$/,'');
 
-      // Check search cache first (only use if it's live data with real coordinates)
+      // Check search cache first
       const searchCache = loadSearchCache();
       const cacheKey = addr.trim().toLowerCase();
-      const cached = searchCache[cacheKey];
-      if (cached && cached.subject && cached.subject.lat && cached.comps && cached.comps.length) {
-        setStatus('ok','Cached · '+cached.comps.length+' comps');
-        subject = cached.subject;
-        comps = cached.comps;
+      if (searchCache[cacheKey]) {
+        setStatus('ok','Cached · '+searchCache[cacheKey].comps.length+' comps');
+        subject = searchCache[cacheKey].subject;
+        comps = searchCache[cacheKey].comps;
       } else {
         setStatus('loading','Calling Rentcast…');
         const params=new URLSearchParams({address:addr,propertyType:'Single Family',compCount:20});
@@ -1015,7 +1007,10 @@ function generateReport() {
     .etile-lbl{font-size:8px;text-transform:uppercase;letter-spacing:0.08em;color:#9c9690;font-weight:700;margin-bottom:4px;}
     .slider-wrap{background:#f9f8f5;border:1px solid #e5e0d8;border-radius:8px;padding:12px 16px;margin-bottom:20px;}
     .slider-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:10px;color:#9c9690;}
-    .slider-labels{display:flex;justify-content:space-between;margin-top:6px;font-size:9px;color:#9c9690;}
+    .slider-track{position:relative;height:6px;background:#e5e7eb;border-radius:3px;}
+    .slider-navy{position:absolute;top:-5px;width:10px;height:16px;background:#1a4f8c;border-radius:2px;left:calc(${compPct}% - 5px);}
+    .slider-red{position:absolute;top:-2px;width:10px;height:10px;background:#c8522a;border-radius:2px;left:calc(${pct}% - 5px);}
+    .slider-labels{display:flex;justify-content:space-between;margin-top:8px;font-size:9px;color:#9c9690;}
     .delta{font-size:12px;font-weight:700;font-family:'DM Mono',monospace;color:${gapColor};}
     h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6b6660;margin:20px 0 8px;padding-bottom:4px;border-bottom:1px solid #e5e0d8;}
     table{width:100%;border-collapse:collapse;font-size:11px;}
@@ -1056,11 +1051,10 @@ function generateReport() {
 
   <div class="slider-wrap">
     <div class="slider-row"><span>${included.length} included</span><span class="delta">${gap>0?'+':'-'}$${Math.abs(gap).toLocaleString()}</span></div>
-    <svg viewBox="0 0 600 20" width="100%" height="20" style="display:block;" preserveAspectRatio="none">
-      <rect x="0" y="7" width="600" height="6" rx="3" fill="#e5e7eb"/>
-      <rect x="${Math.round(compPct*6-5)}" y="2" width="10" height="16" rx="2" fill="#1a4f8c"/>
-      <rect x="${Math.round(pct*6-5)}" y="5" width="10" height="10" rx="2" fill="#c8522a"/>
-    </svg>
+    <div class="slider-track">
+      <div class="slider-navy"></div>
+      <div class="slider-red"></div>
+    </div>
     <div class="slider-labels"><span>$${minRent.toLocaleString()}</span><span>$${maxRent.toLocaleString()}</span></div>
   </div>
 
@@ -1090,7 +1084,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     initMap();
     document.getElementById('stats-strip').classList.add('visible');
     document.getElementById('addr-input').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
-    initAccess(); // triggers doSearch after key validated
+    initAccess(); // check key, show gate or proceed
   } catch(e) {
     document.body.insertAdjacentHTML('afterbegin','<div style="position:fixed;top:0;left:0;right:0;background:#dc2626;color:white;padding:10px;font-size:12px;z-index:99999;font-family:monospace;">ERROR: '+e.message+'</div>');
   }
