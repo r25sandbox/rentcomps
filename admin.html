@@ -172,8 +172,7 @@ async function approve(email) {
   try {
     const result = await api('/admin/approve', 'POST', { email, days });
     if (result.key) {
-      await navigator.clipboard.writeText(result.magicLink);
-      alert('Key created: ' + result.key + '\nMagic link copied to clipboard!\n\n' + result.magicLink);
+      prompt('Key created! Copy this magic link to send to ' + email + ':', result.magicLink);
       loadAll();
     } else {
       alert('Error: ' + JSON.stringify(result));
@@ -190,9 +189,7 @@ async function revoke(key) {
 }
 
 function copyText(text) {
-  navigator.clipboard.writeText(text).then(()=>alert('Copied!')).catch(()=>{
-    prompt('Copy this link:', text);
-  });
+  prompt('Copy this magic link:', text);
 }
 
 document.getElementById('secret-input').addEventListener('keydown', e => {
