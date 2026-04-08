@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+  RentalComp Admin — admin.html
+  v1.0  2026-04-07  Initial: requests table, approve with magic link, keys table, revoke
+                    // Commit: add admin panel for access key management
+-->
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>RentalComp Admin</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:system-ui,sans-serif;background:#0d1b2e;color:#e5e0d8;min-height:100vh;padding:24px;}
+  h1{font-size:18px;font-weight:700;color:#c9a84c;margin-bottom:4px;}
+  .sub{font-size:12px;color:#6b6660;margin-bottom:24px;}
+  .login{background:#162236;border-radius:12px;padding:24px;max-width:400px;margin:80px auto;}
+  .login h2{font-size:16px;margin-bottom:16px;color:#c9a84c;}
+  input{width:100%;padding:9px 12px;border:1px solid #2a3a50;border-radius:8px;background:#0d1b2e;color:#e5e0d8;font-size:13px;margin-bottom:10px;}
+  input:focus{outline:none;border-color:#c9a84c;}
+  button{padding:9px 18px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
+  .btn-gold{background:#c9a84c;color:#0d1b2e;}
+  .btn-gold:hover{background:#b8943d;}
+  .btn-red{background:#dc2626;color:#fff;font-size:11px;padding:4px 10px;}
+  .btn-red:hover{background:#b91c1c;}
+  .btn-green{background:#16a34a;color:#fff;font-size:11px;padding:4px 10px;}
+  .btn-green:hover{background:#15803d;}
+  .section{background:#162236;border-radius:12px;padding:20px;margin-bottom:20px;}
+  .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6b6660;margin-bottom:14px;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th{text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#6b6660;border-bottom:1px solid #2a3a50;}
+  td{padding:9px 10px;border-bottom:1px solid #1e2f45;vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;text-transform:uppercase;}
+  .badge-pending{background:#78350f;color:#fcd34d;}
+  .badge-approved{background:#14532d;color:#86efac;}
+  .badge-active{background:#14532d;color:#86efac;}
+  .badge-inactive{background:#3f1515;color:#fca5a5;}
+  .badge-expired{background:#3f1515;color:#fca5a5;}
+  .magic{font-family:monospace;font-size:11px;color:#c9a84c;word-break:break-all;}
+  .copy{font-size:10px;padding:3px 8px;background:#2a3a50;border:none;border-radius:4px;color:#c9a84c;cursor:pointer;margin-left:6px;}
+  .empty{color:#6b6660;font-size:12px;padding:12px 0;}
+  .err{color:#f87171;font-size:12px;margin-top:8px;}
+  .searches{font-size:10px;color:#6b6660;}
+  .days-input{width:60px;display:inline-block;padding:4px 8px;margin:0 6px;}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login">
+    <h2>RentalComp Admin</h2>
+    <input type="password" id="secret-input" placeholder="Admin secret" />
+    <input type="text" id="worker-input" value="https://rentalcomp-proxy.alik-levin.workers.dev" placeholder="Worker URL" />
+    <button class="btn-gold" onclick="doLogin()">Login</button>
+    <div class="err" id="login-err"></div>
+  </div>
+</div>
+
+<div id="main-screen" style="display:none;max-width:960px;margin:0 auto;">
+  <h1>RentalComp<span style="color:#fff;"> Intelligence</span></h1>
+  <div class="sub">Admin Panel · <span id="worker-label"></span></div>
+
+  <!-- Pending Requests -->
+  <div class="section">
+    <div class="section-title">Access Requests <button class="btn-gold" style="float:right;font-size:11px;padding:4px 12px;" onclick="loadAll()">↺ Refresh</button></div>
+    <table>
+      <thead><tr><th>Email</th><th>Requested</th><th>Status</th><th>Days</th><th>Action</th></tr></thead>
+      <tbody id="requests-body"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- Active Keys -->
+  <div class="section">
+    <div class="section-title">Access Keys</div>
+    <table>
+      <thead><tr><th>Key</th><th>Email</th><th>Created</th><th>Expires</th><th>Searches</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody id="keys-body"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+let WORKER = '';
+let SECRET = '';
+
+function doLogin() {
+  SECRET = document.getElementById('secret-input').value.trim();
+  WORKER = document.getElementById('worker-input').value.trim().replace(/\/$/,'');
+  if (!SECRET || !WORKER) { document.getElementById('login-err').textContent = 'Both fields required'; return; }
+  document.getElementById('worker-label').textContent = WORKER;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-screen').style.display = 'block';
+  loadAll();
+}
+
+async function api(path, method='GET', body=null) {
+  const opts = { method, headers: { 'x-admin-secret': SECRET, 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(WORKER + path, opts);
+  return res.json();
+}
+
+async function loadAll() {
+  loadRequests();
+  loadKeys();
+}
+
+async function loadRequests() {
+  const tbody = document.getElementById('requests-body');
+  tbody.innerHTML = '<tr><td colspan="5" class="empty">Loading…</td></tr>';
+  try {
+    const data = await api('/admin/requests');
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No requests yet.</td></tr>'; return; }
+    tbody.innerHTML = data.map(r => {
+      const date = new Date(r.requestedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      const badge = r.status === 'approved'
+        ? '<span class="badge badge-approved">Approved</span>'
+        : '<span class="badge badge-pending">Pending</span>';
+      const action = r.status === 'pending'
+        ? '<input class="days-input" type="number" value="7" min="1" max="90" id="days-'+btoa(r.email).replace(/=/g,'')+'" />'
+          + '<button class="btn-green" onclick="approve(\''+r.email+'\')">Approve</button>'
+        : '<span style="color:#6b6660;font-size:11px;">Key: '+( r.key||'—')+'</span>';
+      return '<tr><td>'+r.email+'</td><td>'+date+'</td><td>'+badge+'</td><td></td><td>'+action+'</td></tr>';
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty" style="color:#f87171;">Error: '+e.message+'</td></tr>';
+  }
+}
+
+async function loadKeys() {
+  const tbody = document.getElementById('keys-body');
+  tbody.innerHTML = '<tr><td colspan="7" class="empty">Loading…</td></tr>';
+  try {
+    const data = await api('/admin/keys');
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">No keys yet.</td></tr>'; return; }
+    tbody.innerHTML = data.map(k => {
+      const created = new Date(k.created).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      const expires = new Date(k.expires).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      const isExpired = new Date(k.expires) < new Date();
+      const searches = (k.searches||[]).length;
+      const lastSearch = searches ? (k.searches[k.searches-1]||k.searches[searches-1])?.address : '—';
+      const badge = !k.active ? '<span class="badge badge-inactive">Revoked</span>'
+        : isExpired ? '<span class="badge badge-expired">Expired</span>'
+        : '<span class="badge badge-active">Active</span>';
+      const magicLink = 'https://r25sandbox.github.io/rentcomps/?key='+k.key;
+      const action = k.active && !isExpired
+        ? '<button class="btn-red" onclick="revoke(\''+k.key+'\')">Revoke</button>' : '';
+      return '<tr>'
+        +'<td><span style="font-family:monospace;color:#c9a84c;">'+k.key+'</span>'
+        +' <button class="copy" onclick="copyText(\''+magicLink+'\')">Copy link</button></td>'
+        +'<td>'+k.email+'</td>'
+        +'<td>'+created+'</td>'
+        +'<td>'+expires+'</td>'
+        +'<td><span class="searches">'+searches+' searches</span>'+(searches?'<br><span style="font-size:10px;color:#6b6660;">Last: '+lastSearch+'</span>':'')+'</td>'
+        +'<td>'+badge+'</td>'
+        +'<td>'+action+'</td>'
+        +'</tr>';
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty" style="color:#f87171;">Error: '+e.message+'</td></tr>';
+  }
+}
+
+async function approve(email) {
+  const id = btoa(email).replace(/=/g,'');
+  const daysEl = document.getElementById('days-'+id);
+  const days = daysEl ? parseInt(daysEl.value) || 7 : 7;
+  try {
+    const result = await api('/admin/approve', 'POST', { email, days });
+    if (result.key) {
+      await navigator.clipboard.writeText(result.magicLink);
+      alert('Key created: ' + result.key + '\nMagic link copied to clipboard!\n\n' + result.magicLink);
+      loadAll();
+    } else {
+      alert('Error: ' + JSON.stringify(result));
+    }
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function revoke(key) {
+  if (!confirm('Revoke key ' + key + '?')) return;
+  try {
+    await api('/admin/revoke', 'POST', { key });
+    loadKeys();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(()=>alert('Copied!')).catch(()=>{
+    prompt('Copy this link:', text);
+  });
+}
+
+document.getElementById('secret-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+</script>
+</body>
+</html>
