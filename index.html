@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.0</title>
+<title>RentalComp Intelligence v4.9b</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -79,6 +79,997 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 .subject-card { background: var(--navy); color: #fff; border-radius: 10px; padding: 11px 13px; margin-bottom: 10px; display: none; }
 .subject-card.visible { display: block; }
 .subject-card .s-addr { font-size: 12px; font-weight: 500; margin-bottom: 3px; line-height: 1.4; }
+.subject-card .s-meta { font-size: 10px; color: rgba(255,255,255,0.45); margin-bottom: 6px; }
+.subject-card .s-rent { font-size: 20px; font-weight: 600; color: var(--gold); font-family: var(--mono); }
+.subject-card .s-range { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+
+/* Filters */
+.filter-row { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+.cb-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); cursor: pointer; }
+.cb-item input { cursor: pointer; width: 13px; height: 13px; margin: 0; }
+
+/* Comp list */
+.comp-list-header { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin-bottom: 7px; }
+.comp-item { border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; margin-bottom: 6px; cursor: pointer; background: var(--surface); transition: border-color 0.15s, background 0.15s; }
+.comp-item:hover { border-color: var(--blue); background: #f4f8ff; }
+.comp-item.active-listing { border-left: 3px solid var(--blue); }
+.comp-item.closed-listing { border-left: 3px solid var(--purple); }
+.comp-item .ci-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+.comp-item .ci-rent { font-size: 14px; font-weight: 600; font-family: var(--mono); color: var(--text); }
+.comp-item .ci-addr { font-size: 11px; color: var(--text2); line-height: 1.4; margin-bottom: 2px; }
+.comp-item .ci-meta { font-size: 10px; color: var(--text3); }
+.badge { font-size: 9px; font-weight: 600; padding: 2px 7px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.04em; }
+.badge-active { background: #dff2e8; color: var(--green); }
+.badge-closed { background: #ede9f7; color: var(--purple); }
+.comp-item.comp-excluded { border-left: 3px solid #ddd; opacity: 0.6; }
+.comp-item.comp-excluded:hover { border-color: #bbb; background: #fafafa; }
+
+/* Stats + legend bar — pinned to bottom, two rows */
+.stats-strip {
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 1000;
+  background: var(--surface); border-top: 1px solid var(--border);
+  display: none; flex-direction: column;
+}
+.stats-strip.visible { display: flex; }
+/* Push Leaflet zoom controls above the stats strip */
+.leaflet-bottom.leaflet-right { bottom: 75px !important; }
+.stats-row { display: flex; align-items: center; justify-content: space-around; padding: 8px 16px; }
+.legend-row {
+  display: flex; align-items: center; justify-content: center;
+  gap: 16px; padding: 5px 16px 7px;
+  border-top: 1px solid var(--border);
+  font-size: 10px; color: var(--text3);
+}
+.ss-item { text-align: center; flex: 1; }
+.ss-lbl { font-size: 8px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); font-weight: 700; margin-bottom: 2px; }
+.ss-val { font-size: 13px; font-weight: 600; font-family: var(--mono); color: var(--text); }
+.ss-div { width: 1px; height: 28px; background: var(--border2); }
+
+/* Legend — now lives in the bar, no longer floating */
+.legend-float { display: none; }
+.ldot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: middle; }
+
+/* Status — inside stats strip, no separate pill needed */
+.status-pill { display: none; }
+.sdot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+.sdot.loading { background: #f0a500; animation: pulse 1s infinite; }
+.sdot.ok { background: var(--green); }
+.sdot.error { background: #e74c3c; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* Popups */
+.leaflet-popup-content-wrapper { border-radius: 10px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important; max-width: calc(100vw - 40px) !important; }
+.leaflet-popup-content { margin: 13px 15px !important; font-family: var(--font) !important; min-width: 200px; max-width: calc(100vw - 80px) !important; word-break: break-word; }
+.popup-rent { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 3px; font-family: var(--mono); }
+.popup-addr { font-size: 12px; color: var(--text2); margin-bottom: 6px; line-height: 1.4; }
+.popup-row { font-size: 11px; color: var(--text3); margin-bottom: 2px; }
+.popup-badge { display: inline-block; font-size: 9px; font-weight: 600; padding: 2px 8px; border-radius: 20px; margin-top: 5px; text-transform: uppercase; letter-spacing: 0.04em; }
+.ph-wrap { margin-top: 9px; border-top: 1px solid #e5e7eb; padding-top: 9px; }
+.ph-title { font-size: 9px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: #9ca3af; margin-bottom: 6px; }
+.ph-loading { font-size: 11px; color: #9ca3af; }
+.ph-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.ph-table td { padding: 3px 0; vertical-align: top; }
+.ph-table td:first-child { color: #9ca3af; width: 68px; }
+.ph-table td:nth-child(2) { color: #374151; }
+.ph-table td:last-child { text-align: right; font-family: var(--mono); font-weight: 500; color: #111827; }
+.ph-listed { color: #16a34a !important; font-weight: 600; }
+.ph-removed { color: #dc2626 !important; font-weight: 600; }
+.ph-changed { color: #d97706 !important; font-weight: 600; }
+.ph-none { font-size: 11px; color: #9ca3af; }
+.gate {
+  position: fixed; inset: 0; background: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999; padding: 24px;
+}
+.gate-card {
+  background: #162236; border-radius: 16px; padding: 32px 28px;
+  max-width: 380px; width: 100%; text-align: center;
+}
+.gate-logo { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+.gate-logo span { color: var(--gold); }
+.gate-tagline { font-size: 11px; color: rgba(255,255,255,0.35); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 24px; }
+.gate-title { font-size: 15px; font-weight: 600; color: #e5e0d8; margin-bottom: 8px; }
+.gate-sub { font-size: 12px; color: #6b6660; margin-bottom: 20px; line-height: 1.6; }
+.gate-input { width: 100%; padding: 10px 14px; border: 1px solid #2a3a50; border-radius: 9px; background: #0d1b2e; color: #e5e0d8; font-size: 13px; margin-bottom: 10px; outline: none; }
+.gate-input:focus { border-color: var(--gold); }
+.gate-btn { width: 100%; padding: 11px; background: var(--gold); color: var(--navy); border: none; border-radius: 9px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.gate-btn:hover { background: var(--gold2); }
+.gate-msg { font-size: 12px; margin-top: 10px; min-height: 18px; }
+.gate-footer { font-size: 11px; color: #6b6660; margin-top: 20px; line-height: 1.6; }
+.gate-footer a { color: var(--gold); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- Access gate — hidden once key is valid -->
+<div class="gate" id="gate">
+  <div class="gate-card">
+    <div class="gate-logo">Rental<span>Comp</span></div>
+    <div class="gate-tagline">Intelligence</div>
+    <div id="gate-content">
+      <div class="gate-title">Request Access</div>
+      <div class="gate-sub">Enter your email and we'll reach out with your access link.</div>
+      <input class="gate-input" type="email" id="gate-email" placeholder="your@email.com" />
+      <button class="gate-btn" onclick="requestAccess()">Request Access</button>
+      <div class="gate-msg" id="gate-msg"></div>
+    </div>
+    <div class="gate-footer">
+      Already have a link? <a href="#" onclick="showKeyEntry()">Enter access key</a>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="logo">Rental<span>Comp</span></div>
+  <div class="tagline">Intelligence</div>
+</header>
+
+<div class="app">
+  <div id="map"></div>
+
+  
+  <div class="panel collapsed" id="panel">
+    <div class="panel-top">
+      <input type="text" id="addr-input" placeholder="Enter property address…" value="10394 E Morning Star Dr, Scottsdale, AZ 85255" />
+      <button class="btn-go" id="search-btn" onclick="doSearch()">Go</button>
+      <div class="btn-toggle" id="toggle-btn" onclick="togglePanel()" aria-label="Toggle menu" style="font-size:16px;letter-spacing:-1px;">☰</div>
+      <div class="btn-toggle" id="pdf-btn" onclick="generateReport()" title="Export PDF report" style="display:none;">⬇</div>
+    </div>
+    <div class="panel-body">
+      <div class="subject-card" id="subject-card">
+        <div class="s-addr" id="sc-addr">—</div>
+        <div class="s-meta" id="sc-meta">—</div>
+        <div class="s-rent" id="sc-rent">—</div>
+        <div class="s-range" id="sc-range">—</div>
+      </div>
+      <div id="price-bar-wrap" style="display:none;background:#f9f8f5;border-radius:8px;padding:10px 12px;margin-bottom:10px;"></div>
+      <div class="filter-row" id="filter-row" style="display:none;">
+        <label class="cb-item"><input type="checkbox" id="cb-active" checked onchange="renderVisible()"> <span style="color:var(--blue);">● Active</span></label>
+        <label class="cb-item"><input type="checkbox" id="cb-closed" checked onchange="renderVisible()"> <span style="color:var(--purple);">● Closed</span></label>
+      </div>
+      <div id="comp-list-wrap"><div class="empty-state">Enter an address to find rental comps</div></div>
+    </div>
+  </div>
+
+  
+  <div class="stats-strip" id="stats-strip">
+    <div class="stats-row">
+      <div class="ss-item"><div class="ss-lbl">In view</div><div class="ss-val" id="s-count">—</div></div>
+      <div class="ss-div"></div>
+      <div class="ss-item"><div class="ss-lbl">Median</div><div class="ss-val" id="s-median">—</div></div>
+      <div class="ss-div"></div>
+      <div class="ss-item"><div class="ss-lbl">Range</div><div class="ss-val" id="s-range-stat" style="font-size:11px;">—</div></div>
+      <div class="ss-div"></div>
+      <div class="ss-item"><div class="ss-lbl">Avg $/sqft</div><div class="ss-val" id="s-sqft">—</div></div>
+    </div>
+    <div class="legend-row">
+      <span><span class="ldot" style="background:#c8522a;"></span>Subject</span>
+      <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
+      <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
+      <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
+    </div>
+  </div>
+
+  
+  <div class="legend-float" id="legend-float">
+    <span><span class="ldot" style="background:#c8522a;"></span>Subject</span>
+    <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
+    <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
+  </div>
+
+  
+  <input type="hidden" id="api-key" value="https://rentalcomp-proxy.alik-levin.workers.dev" />
+  <span id="status-dot" style="display:none;"></span>
+  <span id="status-msg" style="display:none;"></span>
+
+<script>
+/* RentalComp Intelligence — Changelog
+   v4.9b 2026-04-08  Rollback to v4.9 — remove search cache, SVG slider, debug logging
+                     // Commit: rollback to v4.9 stable - remove broken cache changes
+   v4.9  2026-04-07  Access gate: email request, KV key validation, magic link, localStorage cache
+                     // Commit: add access control gate + localStorage history cache
+   v4.8  2026-04-07  Zoom controls offset 75px above stats strip
+                     // Commit: fix zoom controls hidden behind stats bar
+   v4.7  2026-04-07  Move zoom control to bottom-right away from panel
+                     // Commit: move zoom controls to bottom-right corner
+   v4.6  2026-04-07  Hamburger/X: swap textContent ☰↔✕
+                     // Commit: fix hamburger X - swap text directly instead of CSS transforms
+   v4.5  2026-04-07  Fix hamburger CSS: scope to #toggle-btn span
+                     // Commit: fix hamburger X - CSS was targeting wrong spans
+   v4.4  2026-04-07  Fix hamburger X: sync open class on auto-expand, fix transform values
+                     // Commit: fix hamburger not showing X - sync with auto-expand and fix CSS
+   v4.3  2026-04-07  Hamburger animates to X on open, back to ☰ on close
+                     // Commit: animate hamburger to X when panel open
+   v4.2  2026-04-07  PDF light theme: white bg, navy accents, readable on paper
+                     // Commit: fix PDF styles for white background - light theme
+   v4.1  2026-04-06  Fix iframe height: html {height:100%}, invalidateSize after init
+                     // Commit: fix map blank in iframe - height and invalidateSize
+   v4.0  2026-04-06  Fix initMap missing from DOMContentLoaded, try/catch error display, zoom controls
+                     // Commit: fix blank map - initMap was missing from DOMContentLoaded
+   v3.9  2026-04-06  Fix all nested backticks causing silent WebKit parse failure
+                     // Commit: fix nested backticks causing silent parse failure in Safari/WebKit
+   v3.8  2026-04-06  Fix nested backtick in generateReport excluded section
+                     // Commit: fix nested backtick breaking JS parser in PDF report
+   v3.7  2026-04-06  Fix SyntaxError: DOMContentLoaded wrapper lost during generateReport insert
+                     // Commit: fix syntax error breaking entire app
+   v3.6  2026-04-05  PDF report: print-ready page with stats, estimate tiles, slider, comp table
+                     // Commit: add PDF export report with full comp breakdown
+   v3.5  2026-04-05  Delta label between range endpoints: red if over, green if under
+                     // Commit: show asking vs estimate delta on slider
+   v3.4  2026-04-05  Remove duplicate price labels below slider
+                     // Commit: less is more - remove redundant slider labels
+   v3.3  2026-04-05  Fix dual markers: navy taller, red on top, neutral track
+                     // Commit: fix navy comp marker hidden behind red asking marker
+   v3.2  2026-04-05  Two markers on slider: red=asking, navy=comp estimate
+                     // Commit: dual markers on slider - asking vs comp estimate visual
+   v3.1  2026-04-05  Signal: Above comp estimate (not range), DOM restored to subject popup
+                     // Commit: fix signal wording + restore DOM in subject popup
+   v3.0  2026-04-05  Slider: remove label above, marker always asking-red, included count red <5
+                     // Commit: cleaner slider - asking-red marker, red warning when <5 comps
+   v2.9  2026-04-05  Fix desktop popup estimate: recalculate on popupopen
+                     // Commit: fix comp estimate missing in subject popup on desktop
+   v2.8  2026-04-05  Sort comps high→low, color = asking vs comp est gap, signal label
+                     // Commit: high-to-low sort, investor color logic, well-priced signal
+   v2.7  2026-04-05  Comp estimate card in subject popup, live updates with include/exclude
+                     // Commit: add comp estimate to subject pin popup
+   v2.6  2026-04-05  Fix ReferenceError: removed orphaned updatePriceBar calls
+                     // Commit: fix updatePriceBar ReferenceError breaking map render
+   v2.5  2026-04-05  Use map.once(moveend) to guarantee renderVisible after setView
+                     // Commit: fix comps not rendering - use map.once for reliable render
+   v2.4  2026-04-05  Fix comps: add all immediately, bounds filter on pan/zoom only
+                     // Commit: fix comps not rendering after search
+   v2.3  2026-04-05  Fix render order: setView before renderVisible, 300ms settle delay
+                     // Commit: fix comps not showing + map not centering after search
+   v2.2  2026-04-05  Collapsible sections, gray excluded dot in legend, 3-way comp estimate
+                     // Commit: collapsible included/excluded lists, comp estimate card
+   v2.1  2026-04-05  Per-comp exclude toggle, gray pin, price position bar
+                     // Commit: exclude comps from stats, price position indicator
+   v2.0  2026-04-05  Default address → 10394 E Morning Star Dr (verified rental)
+                     // Commit: switch default to verified rental address
+   v1.9  2026-04-05  Panel starts collapsed via CSS, open/collapsed class fix
+   v1.8  2026-04-05  Zillow scrape confirmed blocked (403), Rentcast fallback for asking price
+   v1.7  2026-04-05  Asking price from Rentcast active listing, Active badge + DOM
+   v1.6  2026-04-05  History cache, 3 calls → 1 per history fetch
+   v1.5  2026-04-05  4 clean stats in bottom bar
+   v1.4  2026-04-05  Stats bar full-width, legend in bar, toggle stays ☰
+   v1.3  2026-04-05  Map-first layout, floating collapsible panel
+   v1.2  2026-04-05  Navy/gold branding
+   v1.1  2026-04-05  Worker URL hardcoded, auto-search on load
+   v1.0  2026-04-05  Cloudflare Worker proxy
+   v0.1–v0.9  Prototype iterations — mock data, branding, viewport filter, history
+*/
+
+// ── Access control ──
+const WORKER_URL = document.getElementById('api-key') ? document.getElementById('api-key').value.trim() : 'https://rentalcomp-proxy.alik-levin.workers.dev';
+let accessKey = null;
+
+async function initAccess() {
+  // Check URL param first
+  const params = new URLSearchParams(window.location.search);
+  const urlKey = params.get('key');
+  if (urlKey) {
+    localStorage.setItem('rc_key', urlKey);
+    // Clean URL without reloading
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+  const storedKey = localStorage.getItem('rc_key');
+  if (storedKey) {
+    const valid = await validateKey(storedKey);
+    if (valid) return; // gate hidden, tool ready
+  }
+  // Show gate
+  document.getElementById('gate').style.display = 'flex';
+}
+
+async function validateKey(key) {
+  try {
+    const res = await fetch(WORKER_URL + '/validate-key?key=' + encodeURIComponent(key));
+    const data = await res.json();
+    if (data.valid) {
+      accessKey = key;
+      document.getElementById('gate').style.display = 'none';
+      setTimeout(doSearch, 800); // auto-search once unlocked
+      return true;
+    } else if (data.reason === 'expired') {
+      showExpired(data.email);
+      return false;
+    }
+    return false;
+  } catch(e) { return false; }
+}
+
+function showExpired(email) {
+  document.getElementById('gate').style.display = 'flex';
+  document.getElementById('gate-content').innerHTML =
+    '<div class="gate-title" style="color:#f87171;">Access Expired</div>'
+    +'<div class="gate-sub">Your access link has expired. Reach out to discuss opportunities.</div>'
+    +'<div style="margin-top:16px;">'
+    +'<a href="mailto:alik@realty25az.com" style="display:inline-block;padding:10px 20px;background:var(--gold);color:var(--navy);border-radius:9px;font-weight:700;font-size:13px;text-decoration:none;">Contact Alik Levin</a>'
+    +'</div>';
+}
+
+async function requestAccess() {
+  const email = document.getElementById('gate-email').value.trim();
+  const msg = document.getElementById('gate-msg');
+  if (!email || !email.includes('@')) { msg.style.color='#f87171'; msg.textContent='Please enter a valid email.'; return; }
+  msg.style.color='#c9a84c'; msg.textContent='Sending request…';
+  try {
+    const res = await fetch(WORKER_URL + '/request-access', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (data.status === 'requested') {
+      msg.style.color='#86efac'; msg.textContent='Request sent! We\'ll be in touch shortly.';
+      document.getElementById('gate-email').disabled = true;
+      document.querySelector('.gate-btn').disabled = true;
+    } else if (data.status === 'already_approved') {
+      msg.style.color='#fcd34d'; msg.textContent='Your email is approved — check your inbox for the access link.';
+    } else if (data.status === 'already_requested') {
+      msg.style.color='#fcd34d'; msg.textContent='Already requested — we\'ll reach out soon.';
+    }
+  } catch(e) {
+    msg.style.color='#f87171'; msg.textContent='Error sending request. Try again.';
+  }
+}
+
+function showKeyEntry() {
+  document.getElementById('gate-content').innerHTML =
+    '<div class="gate-title">Enter Access Key</div>'
+    +'<div class="gate-sub">Paste your access key below.</div>'
+    +'<input class="gate-input" type="text" id="manual-key" placeholder="R25-XXXXXXXX" />'
+    +'<button class="gate-btn" onclick="submitManualKey()">Unlock</button>'
+    +'<div class="gate-msg" id="gate-msg"></div>';
+}
+
+async function submitManualKey() {
+  const key = document.getElementById('manual-key').value.trim();
+  const msg = document.getElementById('gate-msg');
+  if (!key) { msg.style.color='#f87171'; msg.textContent='Please enter a key.'; return; }
+  msg.style.color='#c9a84c'; msg.textContent='Validating…';
+  localStorage.setItem('rc_key', key);
+  const valid = await validateKey(key);
+  if (!valid) {
+    msg.style.color='#f87171'; msg.textContent='Invalid or expired key.';
+    localStorage.removeItem('rc_key');
+  }
+}
+
+// ── localStorage cache for history ──
+const CACHE_KEY = 'rc_history_cache';
+
+function loadCacheFromStorage() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (raw) Object.assign(historyCache, JSON.parse(raw));
+  } catch(e) {}
+}
+function saveCacheToStorage() {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(historyCache)); } catch(e) {}
+}
+
+const MOCK_SUBJECT = {
+  address:"10394 E Morning Star Dr, Scottsdale, AZ 85255", lat:33.6891, lng:-111.8461,
+  bedrooms:4, bathrooms:3, squareFootage:2200, propertyType:"SFR",
+  rent:3800, rentRangeLow:3500, rentRangeHigh:4100,
+  askingPrice:3800, isActive:true, dom:7
+};
+const MOCK_COMPS = [
+  {id:1,formattedAddress:"8800 E Bahia Dr, Scottsdale, AZ 85258",latitude:33.6855,longitude:-111.8940,bedrooms:3,bathrooms:2.5,squareFootage:1720,price:3250,status:"Active",daysOnMarket:7,propertyType:"SFR"},
+  {id:2,formattedAddress:"9244 E Raintree Dr, Scottsdale, AZ 85258",latitude:33.6940,longitude:-111.8900,bedrooms:3,bathrooms:2,squareFootage:1480,price:2820,status:"Inactive",daysOnMarket:9,propertyType:"SFR"},
+  {id:3,formattedAddress:"8301 E Raintree Dr, Scottsdale, AZ 85258",latitude:33.6818,longitude:-111.9038,bedrooms:3,bathrooms:2,squareFootage:1300,price:2580,status:"Inactive",daysOnMarket:22,propertyType:"SFR"},
+  {id:4,formattedAddress:"8415 E Raintree Dr, Scottsdale, AZ 85258",latitude:33.6832,longitude:-111.9020,bedrooms:3,bathrooms:2,squareFootage:1350,price:2620,status:"Inactive",daysOnMarket:30,propertyType:"SFR"},
+  {id:5,formattedAddress:"8488 E McDonald Dr, Scottsdale, AZ 85258",latitude:33.6843,longitude:-111.9005,bedrooms:3,bathrooms:2,squareFootage:1540,price:2760,status:"Inactive",daysOnMarket:18,propertyType:"SFR"},
+  {id:6,formattedAddress:"8555 E Raintree Dr, Scottsdale, AZ 85258",latitude:33.6876,longitude:-111.8982,bedrooms:3,bathrooms:2,squareFootage:1390,price:2700,status:"Inactive",daysOnMarket:21,propertyType:"SFR"},
+  {id:7,formattedAddress:"8650 E Pinnacle Peak Rd, Scottsdale, AZ 85258",latitude:33.6879,longitude:-111.8948,bedrooms:3,bathrooms:2,squareFootage:1330,price:2630,status:"Inactive",daysOnMarket:17,propertyType:"SFR"},
+  {id:8,formattedAddress:"8722 E Via de Ventura, Scottsdale, AZ 85258",latitude:33.6895,longitude:-111.8930,bedrooms:3,bathrooms:2,squareFootage:1580,price:3020,status:"Inactive",daysOnMarket:14,propertyType:"SFR"},
+  {id:9,formattedAddress:"9001 E Bahia Dr, Scottsdale, AZ 85258",latitude:33.6919,longitude:-111.8875,bedrooms:3,bathrooms:2,squareFootage:1450,price:2900,status:"Active",daysOnMarket:3,propertyType:"SFR"},
+  {id:10,formattedAddress:"9188 E Raintree Dr, Scottsdale, AZ 85258",latitude:33.6928,longitude:-111.8915,bedrooms:3,bathrooms:2,squareFootage:1510,price:2975,status:"Active",daysOnMarket:5,propertyType:"SFR"},
+];
+
+let map, subjectMarker, allComps=[], compMarkers={}, currentSubject=null, panelOpen=false;
+
+function initMap() {
+  map = L.map('map',{zoomControl:false}).setView([33.4484,-112.0740],11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',maxZoom:19}).addTo(map);
+  L.control.zoom({position:'bottomright'}).addTo(map);
+  map.on('moveend zoomend', renderVisible);
+  setTimeout(()=>map.invalidateSize(),300);
+}
+
+function togglePanel() {
+  panelOpen = !panelOpen;
+  const p = document.getElementById('panel');
+  const btn = document.getElementById('toggle-btn');
+  p.classList.toggle('open', panelOpen);
+  p.classList.toggle('collapsed', !panelOpen);
+  btn.textContent = panelOpen ? '✕' : '☰';
+}
+
+function subjectIcon() { return L.divIcon({className:'',html:`<div style="width:22px;height:22px;border-radius:50%;background:#c8522a;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>`,iconSize:[22,22],iconAnchor:[11,11]}); }
+function compIcon(status) { const bg=status==='Active'?'#1a4f8c':'#5c35a0'; return L.divIcon({className:'',html:`<div style="width:14px;height:14px;border-radius:50%;background:${bg};border:2px solid white;box-shadow:0 1px 5px rgba(0,0,0,0.3);"></div>`,iconSize:[14,14],iconAnchor:[7,7]}); }
+
+function setStatus(state,msg) { document.getElementById('status-dot').className='sdot '+(state||''); document.getElementById('status-msg').textContent=msg; }
+function distMi(la1,lo1,la2,lo2) { const R=3958.8,toR=d=>d*Math.PI/180,dLa=toR(la2-la1),dLo=toR(lo2-lo1),a=Math.sin(dLa/2)**2+Math.cos(toR(la1))*Math.cos(toR(la2))*Math.sin(dLo/2)**2; return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); }
+function zillowUrl(address) { return `https://www.zillow.com/homes/for_rent/${encodeURIComponent(address)}_rb/`; }
+function zillowLink(address) { return `<a href="${zillowUrl(address)}" target="_blank" style="display:inline-block;margin-top:8px;font-size:11px;font-weight:500;color:#1a4f8c;text-decoration:none;border:1px solid #1a4f8c;border-radius:6px;padding:3px 9px;">Zillow ↗</a>`; }
+
+async function doSearch() {
+  const addr=document.getElementById('addr-input').value.trim(); if(!addr) return;
+  const apiKey=document.getElementById('api-key').value.trim();
+  document.getElementById('search-btn').disabled=true;
+  setStatus('loading','Looking up property…');
+  Object.values(compMarkers).forEach(m=>map.removeLayer(m)); compMarkers={};
+  excluded.clear();
+  if(subjectMarker){map.removeLayer(subjectMarker);subjectMarker=null;} allComps=[];
+
+  try {
+    let subject,comps;
+    if(apiKey) {
+      const base=apiKey.replace(/\/$/,'');
+      setStatus('loading','Calling Rentcast…');
+      const params=new URLSearchParams({address:addr,propertyType:'Single Family',compCount:20});
+      const res=await fetch(`${base}/rentcast/avm/rent/long-term?${params}`);
+      if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e?.error||`API error ${res.status}`);}
+      const data=await res.json();
+      let propDetails={},listingData={};
+      const [pRes,zRes]=await Promise.allSettled([
+        fetch(`${base}/rentcast/properties?address=${encodeURIComponent(addr)}&limit=1`),
+        fetch(`${base}/zillow-price?address=${encodeURIComponent(addr)}`)
+      ]);
+      if(pRes.status==='fulfilled'&&pRes.value.ok){const d=await pRes.value.json();const r=Array.isArray(d)?d[0]:d;propDetails={bedrooms:r?.bedrooms,bathrooms:r?.bathrooms,squareFootage:r?.squareFootage,propertyType:r?.propertyType};}
+      if(zRes.status==='fulfilled'&&zRes.value.ok){listingData=await zRes.value.json();}
+      subject={address:addr,lat:data.latitude,lng:data.longitude,bedrooms:data.bedrooms||propDetails.bedrooms,bathrooms:data.bathrooms||propDetails.bathrooms,squareFootage:data.squareFootage||propDetails.squareFootage,propertyType:data.propertyType||propDetails.propertyType||'SFR',rent:Math.round(data.rent),rentRangeLow:Math.round(data.rentRangeLow),rentRangeHigh:Math.round(data.rentRangeHigh),askingPrice:listingData.price||null,isActive:listingData.status==='Active',dom:listingData.daysOnMarket||null,priceSource:listingData.source||null};
+      comps=(data.comparables||[]).map((c,i)=>({id:i,formattedAddress:c.formattedAddress||c.address,latitude:c.latitude,longitude:c.longitude,bedrooms:c.bedrooms,bathrooms:c.bathrooms,squareFootage:c.squareFootage,price:Math.round(c.price),status:c.status||'Active',daysOnMarket:c.daysOnMarket||null,propertyType:c.propertyType||'SFR'}));
+      setStatus('ok',`Live · ${comps.length} comps`);
+      // Log unique address for tracking
+      if (accessKey) {
+        fetch(WORKER_URL+'/log-search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:accessKey,address:addr})}).catch(()=>{});
+      }
+      await new Promise(r=>setTimeout(r,600));
+      subject={...MOCK_SUBJECT,address:addr}; comps=MOCK_COMPS;
+      setStatus('ok',`Mock · ${comps.length} comps`);
+    }
+    currentSubject=subject; allComps=comps;
+    placeSubject(subject); placeComps(comps); updateSubjectCard(subject);
+    document.getElementById('filter-row').style.display='flex';
+    document.getElementById('legend-float').classList.add('visible');
+    document.getElementById('pdf-btn').style.display='flex';
+    map.once('moveend', ()=>{ renderVisible(); });
+    map.setView([subject.lat,subject.lng],15);
+    panelOpen=true;
+    const p=document.getElementById('panel');
+    p.classList.remove('collapsed');
+    p.classList.add('open');
+    document.getElementById('toggle-btn').textContent='✕';
+  } catch(err) { setStatus('error',err.message); }
+  finally { document.getElementById('search-btn').disabled=false; }
+}
+
+function placeSubject(s) {
+  subjectMarker=L.marker([s.lat,s.lng],{icon:subjectIcon(),zIndexOffset:1000}).addTo(map);
+  const bedsStr=s.bedrooms?(s.bedrooms+' bd / '+s.bathrooms+' ba'):'';
+  const sqftStr=s.squareFootage?s.squareFootage.toLocaleString()+' sqft':'';
+  const ppsf=(s.squareFootage&&s.rent)?'$'+(s.rent/s.squareFootage).toFixed(2)+'/sqft':'';
+  const displayPrice=s.askingPrice||s.rent;
+  const isActive=s.isActive;
+  const domSpan = s.dom ? '<span style="font-size:10px;color:#9ca3af;">'+s.dom+' DOM</span>' : '';
+  const activeBadge = isActive ? '<span style="background:#dff2e8;color:#2a7a4a;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:0.04em;">Active</span>' : '';
+  const sourceStr = s.priceSource==='zillow' ? '<span style="color:#006aff;font-weight:600;">Zillow live</span>' : 'Rentcast';
+  const askingBlock = s.askingPrice
+    ? '<div style="font-size:10px;color:#9ca3af;">Source: '+sourceStr+' · Rentcast est: $'+s.rent.toLocaleString()+'</div>'
+      +'<div style="font-size:10px;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:4px 8px;margin-top:6px;line-height:1.5;">⚠ Verify on <a href="'+zillowUrl(s.address)+'" target="_blank" style="color:#92400e;font-weight:600;text-decoration:underline;">Zillow</a> — may have changed.</div>'
+    : '<div style="font-size:10px;color:#9ca3af;">Rentcast estimate · Range: $'+s.rentRangeLow.toLocaleString()+' – $'+s.rentRangeHigh.toLocaleString()+'</div>';
+  const metaRow = [bedsStr,sqftStr,ppsf].filter(Boolean).join(' · ');
+  const div=document.createElement('div');
+  div.innerHTML=
+    '<div class="popup-rent">Subject Property</div>'
+    +'<div class="popup-addr">'+s.address+'</div>'
+    +'<div class="popup-row">'+metaRow+'</div>'
+    +'<div class="popup-row">'+(s.propertyType||'SFR')+'</div>'
+    +'<div style="margin-top:8px;">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">'
+        +'<span style="font-size:17px;font-weight:600;color:#c8522a;font-family:\'DM Mono\',monospace;">$'+displayPrice.toLocaleString()+'/mo</span>'
+        +activeBadge+domSpan
+      +'</div>'
+      +askingBlock
+    +'</div>'
+    +'<div id="subj-popup-estimate" style="margin-top:8px;"></div>'
+    +'<div class="ph-wrap"><div class="ph-title">Price history</div><div id="subj-hist" class="ph-loading">Loading…</div></div>'
+    +zillowLink(s.address);
+  subjectMarker.bindPopup(L.popup({maxWidth:300}).setContent(div));
+  subjectMarker.on('popupopen',()=>{
+    fetchRentHistory(s.address,'subj-hist');
+    // Inject estimate in case popup opens after stats already calculated
+    const bounds=map.getBounds();
+    const showActive=document.getElementById('cb-active').checked;
+    const showClosed=document.getElementById('cb-closed').checked;
+    const visible=allComps.filter(c=>{
+      if(!c.latitude||!c.longitude) return false;
+      const inBounds=bounds.contains([c.latitude,c.longitude]);
+      const isActive=c.status==='Active';
+      return inBounds&&((isActive&&showActive)||(!isActive&&showClosed));
+    });
+    if(visible.length) {
+      const included=visible.filter(c=>!excluded.has(c.id));
+      if(included.length) {
+        const rents=included.map(c=>c.price).sort((a,b)=>a-b);
+        const mid=Math.floor(rents.length/2);
+        const median=rents.length%2===0?Math.round((rents[mid-1]+rents[mid])/2):rents[mid];
+        updateCompEstimate(included,median,Math.min(...rents),Math.max(...rents));
+      }
+    }
+  });
+}
+
+// ── Excluded comps set ──
+const excluded = new Set();
+
+function excludedIcon() {
+  return L.divIcon({className:'',html:`<div style="width:14px;height:14px;border-radius:50%;background:#bbb;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.2);"></div>`,iconSize:[14,14],iconAnchor:[7,7]});
+}
+
+function toggleExclude(id) {
+  if(excluded.has(id)) excluded.delete(id); else excluded.add(id);
+  // Update marker icon
+  const c = allComps.find(c=>c.id===id);
+  const m = compMarkers[id];
+  if(c && m) m.setIcon(excluded.has(id) ? excludedIcon() : compIcon(c.status));
+  // Update popup button text
+  const btn = document.getElementById(`excl-btn-${id}`);
+  if(btn) btn.textContent = excluded.has(id) ? 'Include' : 'Exclude';
+  // Recalc stats
+  const bounds = map.getBounds();
+  const showActive = document.getElementById('cb-active').checked;
+  const showClosed = document.getElementById('cb-closed').checked;
+  const visible = allComps.filter(c=>{
+    if(!c.latitude||!c.longitude) return false;
+    const inBounds = bounds.contains([c.latitude,c.longitude]);
+    const isActive = c.status==='Active';
+    const ok = (isActive&&showActive)||(!isActive&&showClosed);
+    return inBounds && ok;
+  });
+  updateStats(visible); updateCompList(visible);
+}
+
+function placeComps(comps) {
+  comps.forEach(c=>{
+    if(!c.latitude||!c.longitude) return;
+    const isActive=c.status==='Active';
+    const m=L.marker([c.latitude,c.longitude],{icon:compIcon(c.status)});
+    const badgeStyle=isActive?'background:#dff2e8;color:#2a7a4a;':'background:#ede9f7;color:#5c35a0;';
+    const sqftStr=c.squareFootage?c.squareFootage.toLocaleString()+' sqft':'—';
+    const ppsf=c.squareFootage?'$'+(c.price/c.squareFootage).toFixed(2)+'/sqft':'';
+    const dom=c.daysOnMarket!=null?c.daysOnMarket+' DOM':'';
+    const dist=currentSubject?distMi(currentSubject.lat,currentSubject.lng,c.latitude,c.longitude).toFixed(2)+' mi':'';
+    const histId=`ph-${c.id}`;
+    m.bindPopup(`<div>
+      <div class="popup-rent">$${c.price.toLocaleString()}/mo</div>
+      <div class="popup-addr">${c.formattedAddress}</div>
+      <div class="popup-row">${c.bedrooms||'?'} bd / ${c.bathrooms||'?'} ba · ${sqftStr}</div>
+      <div class="popup-row">${[c.propertyType,ppsf,dom,dist].filter(Boolean).join(' · ')}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+        <span class="popup-badge" style="${badgeStyle}">${isActive?'Active':'Closed'}</span>
+        <button id="excl-btn-${c.id}" onclick="toggleExclude(${c.id})" style="font-size:10px;padding:2px 9px;border-radius:6px;border:1px solid #ddd;background:#f9f9f9;cursor:pointer;color:#555;">Exclude</button>
+      </div>
+      <div class="ph-wrap"><div class="ph-title">Price history</div><div id="${histId}" class="ph-loading">Loading…</div></div>
+      ${zillowLink(c.formattedAddress)}
+    </div>`,{maxWidth:290});
+    m.on('popupopen',()=>{
+      fetchRentHistory(c.formattedAddress,histId);
+      const btn=document.getElementById(`excl-btn-${c.id}`);
+      if(btn) btn.textContent=excluded.has(c.id)?'Include':'Exclude';
+    });
+    compMarkers[c.id]=m;
+  });
+}
+
+// ── History cache — keyed by address, survives the session ──
+const historyCache = {};
+
+async function fetchRentHistory(address,historyDivId) {
+  const apiKey=document.getElementById('api-key').value.trim();
+  const el=document.getElementById(historyDivId); if(!el) return;
+
+  if(!apiKey){
+    el.innerHTML=renderHistoryTable([
+      {date:'2026-03-10',event:'Listing removed',price:3200},
+      {date:'2026-01-15',event:'Listed for rent',price:3200},
+      {date:'2025-10-03',event:'Listing removed',price:3050},
+      {date:'2025-08-20',event:'Listed for rent',price:3050}
+    ]); return;
+  }
+
+  // Serve from cache — zero API calls on repeat clicks
+  if(historyCache[address]) {
+    el.innerHTML=historyCache[address]; return;
+  }
+
+  try {
+    const base=apiKey.replace(/\/$/,'');
+    // Single call — inactive listings give us full history (listed + removed dates per record)
+    const res=await fetch(`${base}/rentcast/listings/rental/long-term?address=${encodeURIComponent(address)}&status=Inactive&limit=20`);
+    let history=[];
+    if(res.ok) {
+      const data=await res.json();
+      const listings=Array.isArray(data)?data:(data.listings||[]);
+      listings.forEach(l=>{
+        if(l.removedDate) history.push({date:l.removedDate,event:'Listing removed',price:l.price});
+        if(l.listedDate)  history.push({date:l.listedDate, event:'Listed for rent',price:l.price});
+        else if(l.lastSeenDate||l.createdDate) history.push({date:l.lastSeenDate||l.createdDate,event:'Listed for rent',price:l.price});
+      });
+    }
+    history.sort((a,b)=>new Date(b.date)-new Date(a.date));
+    history=history.filter((h,i,arr)=>i===0||!(h.date===arr[i-1].date&&h.event===arr[i-1].event));
+    const html=history.length?renderHistoryTable(history):'<div class="ph-none">No history on record</div>';
+    historyCache[address]=html; // cache in memory + persist
+    saveCacheToStorage();
+    el.innerHTML=html;
+  } catch(e){el.innerHTML='<div class="ph-none">History unavailable</div>';}
+}
+
+function abbreviateEvent(evt) {
+  if(/listed|for rent|listing$/i.test(evt)) return 'Listed';
+  if(/removed|expired|cancelled|withdrawn/i.test(evt)) return 'Removed';
+  if(/price.*(reduc|drop|decrease)/i.test(evt)) return 'Price drop';
+  if(/price.*(increase|raise)/i.test(evt)) return 'Price up';
+  if(/price|change/i.test(evt)) return 'Price change';
+  return evt;
+}
+
+function renderHistoryTable(history) {
+  const sorted=[...history].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,10);
+  const rows=sorted.map((h,i)=>{
+    const d=h.date?new Date(h.date):null;
+    const dateStr=d?`${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}`:'—';
+    const evt=abbreviateEvent(h.event||h.type||h.listingType||h.status||'');
+    const evtClass=evt==='Listed'?'ph-listed':evt==='Removed'?'ph-removed':/price/i.test(evt)?'ph-changed':'';
+    const rawPrice=h.price??h.listingPrice??h.rent??h.amount??null;
+    const priceStr=rawPrice?'$'+Math.round(rawPrice).toLocaleString():'—';
+    let daysStr='';
+    if(i<sorted.length-1&&sorted[i+1].date){const days=Math.round(Math.abs(new Date(sorted[i].date)-new Date(sorted[i+1].date))/86400000);daysStr=`<span style="color:#9ca3af;font-size:9px;"> · ${days}d</span>`;}
+    return `<tr><td>${dateStr}</td><td class="${evtClass}">${evt}${daysStr}</td><td>${priceStr}</td></tr>`;
+  }).join('');
+  return `<table class="ph-table">${rows}</table>`;
+}
+
+function renderVisible() {
+  if(!map||!allComps.length) return;
+  const bounds=map.getBounds();
+  const showActive=document.getElementById('cb-active').checked;
+  const showClosed=document.getElementById('cb-closed').checked;
+  const visible=[];
+  allComps.forEach(c=>{
+    if(!c.latitude||!c.longitude) return;
+    const m=compMarkers[c.id]; if(!m) return;
+    const inBounds=bounds.contains([c.latitude,c.longitude]);
+    const isActive=c.status==='Active';
+    const ok=(isActive&&showActive)||(!isActive&&showClosed);
+    if(inBounds&&ok){if(!map.hasLayer(m))map.addLayer(m);visible.push(c);}
+    else{if(map.hasLayer(m))map.removeLayer(m);}
+  });
+  updateStats(visible); updateCompList(visible);
+}
+
+function updateSubjectCard(s) {
+  document.getElementById('sc-addr').textContent=s.address;
+  const meta=[s.bedrooms?`${s.bedrooms} bd`:null,s.bathrooms?`${s.bathrooms} ba`:null,s.squareFootage?`${s.squareFootage.toLocaleString()} sqft`:null,s.propertyType||null].filter(Boolean).join(' · ');
+  document.getElementById('sc-meta').textContent=meta;
+  const displayPrice=s.askingPrice||s.rent;
+  document.getElementById('sc-rent').textContent='$'+displayPrice.toLocaleString()+'/mo';
+  const rangeEl=document.getElementById('sc-range');
+  if(s.askingPrice&&s.isActive) {
+    rangeEl.innerHTML='<span style="background:#dff2e8;color:#2a7a4a;font-size:9px;font-weight:700;padding:1px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:0.04em;vertical-align:middle;">Active</span>'+(s.dom?` <span style="opacity:0.5;">${s.dom} DOM</span>`:'');
+  } else {
+    rangeEl.textContent=`Est. range: $${s.rentRangeLow.toLocaleString()} – $${s.rentRangeHigh.toLocaleString()}`;
+  }
+  document.getElementById('subject-card').classList.add('visible');
+}
+
+function updateStats(comps) {
+  const included = comps.filter(c=>!excluded.has(c.id));
+  const excCount = comps.length - included.length;
+  document.getElementById('s-count').textContent = included.length + (excCount ? ` (${excCount} excl.)` : '');
+  if(!included.length){['s-median','s-range-stat','s-sqft'].forEach(id=>document.getElementById(id).textContent='—');updateCompEstimate(null);return;}
+  const rents=included.map(c=>c.price).sort((a,b)=>a-b);
+  const mid=Math.floor(rents.length/2);
+  const median=rents.length%2===0?Math.round((rents[mid-1]+rents[mid])/2):rents[mid];
+  document.getElementById('s-median').textContent='$'+median.toLocaleString();
+  document.getElementById('s-range-stat').textContent='$'+Math.min(...rents).toLocaleString()+'–$'+Math.max(...rents).toLocaleString();
+  const ws=included.filter(c=>c.squareFootage);
+  document.getElementById('s-sqft').textContent=ws.length?'$'+(ws.reduce((a,c)=>a+(c.price/c.squareFootage),0)/ws.length).toFixed(2):'—';
+  document.getElementById('stats-strip').classList.add('visible');
+  const subjectPrice = currentSubject ? (currentSubject.askingPrice||currentSubject.rent) : null;
+  updateCompEstimate(included, median, Math.min(...rents), Math.max(...rents));
+}
+
+function updateCompEstimate(included, median, minRent, maxRent) {
+  const bar = document.getElementById('price-bar-wrap');
+  if(!included || !currentSubject) { if(bar) bar.style.display='none'; return; }
+
+  const subjectPrice = currentSubject.askingPrice || currentSubject.rent;
+  const rcEstimate = currentSubject.rent;
+  const withSqft = included.filter(c=>c.squareFootage && c.price);
+  let compEstimate = median;
+  if(withSqft.length && currentSubject.squareFootage) {
+    const avgPpsf = withSqft.reduce((a,c)=>a+(c.price/c.squareFootage),0)/withSqft.length;
+    compEstimate = Math.round(avgPpsf * currentSubject.squareFootage);
+  }
+
+  const gap = subjectPrice - compEstimate;
+  const gapPct = compEstimate > 0 ? (gap / compEstimate) * 100 : 0;
+  const color = gapPct <= 5 ? '#16a34a' : gapPct <= 15 ? '#c9a84c' : '#dc2626';
+
+  const pct = Math.max(0, Math.min(100, ((subjectPrice-minRent)/(maxRent-minRent))*100));
+  const compPct = Math.max(0, Math.min(100, ((compEstimate-minRent)/(maxRent-minRent))*100));
+
+  const estimateHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;">
+      <div style="background:#f4f2ec;border-radius:6px;padding:6px 4px;">
+        <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:#9ca3af;margin-bottom:2px;">Asking</div>
+        <div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:#c8522a;">$${subjectPrice.toLocaleString()}</div>
+      </div>
+      <div style="background:#f4f2ec;border-radius:6px;padding:6px 4px;">
+        <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:#9ca3af;margin-bottom:2px;">Comp est.</div>
+        <div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:#1a4f8c;">$${compEstimate.toLocaleString()}</div>
+      </div>
+      <div style="background:#f4f2ec;border-radius:6px;padding:6px 4px;">
+        <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:#9ca3af;margin-bottom:2px;">Rentcast</div>
+        <div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:#888;">$${rcEstimate.toLocaleString()}</div>
+      </div>
+    </div>
+    <div style="margin-top:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:9px;font-weight:700;color:${included.length<5?'#dc2626':'#9ca3af'};">${included.length} included</span>
+      </div>
+      <div style="position:relative;height:6px;background:#e5e7eb;border-radius:3px;margin-top:8px;">
+        <div style="position:absolute;left:0;top:0;height:100%;width:100%;background:#e5e7eb;border-radius:3px;"></div>
+        <div style="position:absolute;top:-5px;left:calc(${compPct}% - 5px);width:10px;height:16px;background:#1a4f8c;border-radius:2px;z-index:1;"></div>
+        <div style="position:absolute;top:-2px;left:calc(${pct}% - 5px);width:10px;height:10px;background:#c8522a;border-radius:2px;z-index:2;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:9px;color:#9ca3af;margin-top:5px;">
+        <span>$${minRent.toLocaleString()}</span>
+        <span style="font-size:11px;font-weight:700;font-family:'DM Mono',monospace;color:${gap>0?'#dc2626':'#16a34a'};">${gap>0?'+':'-'}$${Math.abs(gap).toLocaleString()}</span>
+        <span>$${maxRent.toLocaleString()}</span>
+      </div>
+    </div>`;
+
+  // Update sidebar bar
+  if(bar) {
+    bar.style.display='block';
+    bar.innerHTML=estimateHTML;
+  }
+
+  // Update subject popup if open
+  const popupEl = document.getElementById('subj-popup-estimate');
+  if(popupEl) {
+    popupEl.style.cssText='background:#f9f8f5;border-radius:8px;padding:8px;margin-top:8px;';
+    popupEl.innerHTML=estimateHTML;
+    if(subjectMarker && subjectMarker.getPopup && subjectMarker.getPopup()) subjectMarker.getPopup().update();
+  }
+}
+
+function updateCompList(comps) {
+  const wrap=document.getElementById('comp-list-wrap');
+  const included=comps.filter(c=>!excluded.has(c.id));
+  const excl=comps.filter(c=>excluded.has(c.id));
+  if(!comps.length){wrap.innerHTML='<div class="empty-state">No comps in view — try zooming out.</div>';return;}
+  const sorted=[...included].sort((a,b)=>b.price-a.price);
+  const exclSorted=[...excl].sort((a,b)=>b.price-a.price);
+
+  const renderItem = (c, isExcluded) => {
+    const isActive=c.status==='Active';
+    const sqftStr=c.squareFootage?`${c.squareFootage.toLocaleString()} sqft`:'';
+    const ppsf=c.squareFootage?` · $${(c.price/c.squareFootage).toFixed(2)}/sf`:'';
+    const dom=c.daysOnMarket!=null?` · ${c.daysOnMarket} DOM`:'';
+    return `<div class="comp-item ${isExcluded?'comp-excluded':isActive?'active-listing':'closed-listing'}" onclick="focusComp(${c.id})">
+      <div class="ci-top">
+        <div class="ci-rent" style="${isExcluded?'color:#bbb;':''}">${isExcluded?'<s>':''} $${c.price.toLocaleString()}/mo ${isExcluded?'</s>':''}</div>
+        <div style="display:flex;gap:5px;align-items:center;">
+          <span class="badge ${isActive?'badge-active':'badge-closed'}">${isActive?'Active':'Closed'}</span>
+          <button onclick="event.stopPropagation();toggleExclude(${c.id})" style="font-size:9px;padding:1px 7px;border-radius:5px;border:1px solid #ddd;background:${isExcluded?'#fee2e2':'#f9f9f9'};cursor:pointer;color:${isExcluded?'#dc2626':'#777'};">${isExcluded?'Include':'Exclude'}</button>
+        </div>
+      </div>
+      <div class="ci-addr" style="${isExcluded?'color:#bbb;':''}">${c.formattedAddress}</div>
+      <div class="ci-meta" style="${isExcluded?'color:#ccc;':''}">${c.bedrooms||'?'}bd/${c.bathrooms||'?'}ba${sqftStr?' · '+sqftStr:''}${ppsf}${dom}</div>
+      <a href="${zillowUrl(c.formattedAddress)}" target="_blank" onclick="event.stopPropagation()" style="display:inline-block;margin-top:5px;font-size:10px;font-weight:500;color:#1a4f8c;text-decoration:none;">Zillow ↗</a>
+    </div>`;
+  };
+
+  // Collapsible section helper
+  const section = (id, label, count, items, defaultOpen=true) => `
+    <div style="margin-bottom:4px;">
+      <div onclick="toggleSection('${id}')" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:6px 2px;user-select:none;">
+        <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:${defaultOpen?'var(--text2)':'#bbb'};">${label} <span style="font-weight:400;opacity:0.7;">(${count})</span></span>
+        <span id="${id}-arrow" style="font-size:10px;color:#bbb;">${defaultOpen?'▲':'▼'}</span>
+      </div>
+      <div id="${id}-body" style="display:${defaultOpen?'block':'none'};">${items}</div>
+    </div>`;
+
+  wrap.innerHTML =
+    section('incl-section', 'Included', sorted.length, sorted.map(c=>renderItem(c,false)).join(''), true) +
+    (exclSorted.length ? section('excl-section', 'Excluded', exclSorted.length, exclSorted.map(c=>renderItem(c,true)).join(''), false) : '');
+}
+
+function focusComp(id) { const m=compMarkers[id];if(!m)return;map.setView(m.getLatLng(),Math.max(map.getZoom(),16));m.openPopup(); }
+
+function toggleSection(id) {
+  const body = document.getElementById(`${id}-body`);
+  const arrow = document.getElementById(`${id}-arrow`);
+  if(!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if(arrow) arrow.textContent = isOpen ? '▼' : '▲';
+}
+
+function generateReport() {
+  if(!currentSubject || !allComps.length) return;
+
+  const bounds = map.getBounds();
+  const showActive = document.getElementById('cb-active').checked;
+  const showClosed = document.getElementById('cb-closed').checked;
+  const visible = allComps.filter(c=>{
+    if(!c.latitude||!c.longitude) return false;
+    const inBounds = bounds.contains([c.latitude,c.longitude]);
+    const isActive = c.status==='Active';
+    return inBounds&&((isActive&&showActive)||(!isActive&&showClosed));
+  });
+  const included = visible.filter(c=>!excluded.has(c.id));
+  const excl = visible.filter(c=>excluded.has(c.id));
+
+  const rents = included.map(c=>c.price).sort((a,b)=>a-b);
+  const mid = Math.floor(rents.length/2);
+  const median = rents.length%2===0 ? Math.round((rents[mid-1]+rents[mid])/2) : rents[mid];
+  const minRent = Math.min(...rents);
+  const maxRent = Math.max(...rents);
+  const withSqft = included.filter(c=>c.squareFootage);
+  const avgPpsf = withSqft.length ? withSqft.reduce((a,c)=>a+(c.price/c.squareFootage),0)/withSqft.length : 0;
+  const compEstimate = (avgPpsf && currentSubject.squareFootage) ? Math.round(avgPpsf*currentSubject.squareFootage) : median;
+  const subjectPrice = currentSubject.askingPrice || currentSubject.rent;
+  const gap = subjectPrice - compEstimate;
+  const gapPct = compEstimate > 0 ? (gap/compEstimate)*100 : 0;
+  const gapColor = gap > 0 ? '#dc2626' : '#16a34a';
+  const pct = Math.max(0,Math.min(100,((subjectPrice-minRent)/(maxRent-minRent))*100));
+  const compPct = Math.max(0,Math.min(100,((compEstimate-minRent)/(maxRent-minRent))*100));
+  const mapMarkers = included.map(c=>'&markers=color:blue%7C'+c.latitude+','+c.longitude).join('');
+  const mapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center='+currentSubject.lat+','+currentSubject.lng+'&zoom=14&size=800x300&maptype=roadmap&markers=color:red%7C'+currentSubject.lat+','+currentSubject.lng+mapMarkers+'&key=';
+  const date = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+
+  const compRows = [...included].sort((a,b)=>b.price-a.price).map(c=>{
+    const isActive = c.status==='Active';
+    const ppsf = c.squareFootage ? '$'+(c.price/c.squareFootage).toFixed(2) : '—';
+    const dist = distMi(currentSubject.lat,currentSubject.lng,c.latitude,c.longitude).toFixed(2);
+    return `<tr>
+      <td>${c.formattedAddress}</td>
+      <td style="text-align:center;">${c.bedrooms||'?'}/${c.bathrooms||'?'}</td>
+      <td style="text-align:center;">${c.squareFootage?c.squareFootage.toLocaleString():'—'}</td>
+      <td style="text-align:center;font-weight:600;">$${c.price.toLocaleString()}</td>
+      <td style="text-align:center;">${ppsf}</td>
+      <td style="text-align:center;">${c.daysOnMarket!=null?c.daysOnMarket:'—'}</td>
+      <td style="text-align:center;"><span style="background:${isActive?'#dff2e8':'#ede9f7'};color:${isActive?'#2a7a4a':'#5c35a0'};padding:2px 8px;border-radius:10px;font-size:11px;">${isActive?'Active':'Closed'}</span></td>
+      <td style="text-align:center;">${dist} mi</td>
+    </tr>`;
+  }).join('');
+
+  const exclRows = excl.sort((a,b)=>b.price-a.price).map(c=>`<tr style="color:#bbb;">
+    <td><s>${c.formattedAddress}</s></td>
+    <td style="text-align:center;">${c.bedrooms||'?'}/${c.bathrooms||'?'}</td>
+    <td style="text-align:center;">${c.squareFootage?c.squareFootage.toLocaleString():'—'}</td>
+    <td style="text-align:center;"><s>$${c.price.toLocaleString()}</s></td>
+    <td style="text-align:center;">${c.squareFootage?'$'+(c.price/c.squareFootage).toFixed(2):'—'}</td>
+    <td style="text-align:center;">${c.daysOnMarket!=null?c.daysOnMarket:'—'}</td>
+    <td style="text-align:center;">Excluded</td>
+    <td style="text-align:center;">${distMi(currentSubject.lat,currentSubject.lng,c.latitude,c.longitude).toFixed(2)} mi</td>
+  </tr>`).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <title>RentalComp Report — ${currentSubject.address}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',sans-serif;color:#1a1814;background:#fff;padding:32px;max-width:900px;margin:0 auto;}
+    @media print{body{padding:16px;}@page{margin:16mm;}}
+    .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #0d1b2e;}
+    .brand{font-size:22px;font-weight:700;color:#0d1b2e;letter-spacing:-0.01em;} .brand span{color:#c9a84c;}
+    .date{font-size:11px;color:#6b6660;}
+    .subject-block{background:#f4f2ec;border-left:4px solid #0d1b2e;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:20px;}
+    .s-addr{font-size:15px;font-weight:700;color:#0d1b2e;margin-bottom:4px;}
+    .s-meta{font-size:11px;color:#6b6660;margin-bottom:10px;}
+    .s-price{font-size:26px;font-weight:700;color:#c8522a;font-family:'DM Mono',monospace;}
+    .s-badge{display:inline-block;background:#dff2e8;color:#2a7a4a;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;margin-left:8px;vertical-align:middle;}
+    .s-dom{font-size:11px;color:#6b6660;margin-top:4px;}
+    .tiles{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:16px;}
+    .tile{background:#f9f8f5;border:1px solid #e5e0d8;border-radius:8px;padding:10px;text-align:center;}
+    .tile-lbl{font-size:8px;text-transform:uppercase;letter-spacing:0.08em;color:#9c9690;font-weight:700;margin-bottom:4px;}
+    .tile-val{font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:#1a1814;}
+    .estimate-tiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;}
+    .etile{background:#f9f8f5;border:1px solid #e5e0d8;border-radius:8px;padding:10px;text-align:center;}
+    .etile-lbl{font-size:8px;text-transform:uppercase;letter-spacing:0.08em;color:#9c9690;font-weight:700;margin-bottom:4px;}
+    .slider-wrap{background:#f9f8f5;border:1px solid #e5e0d8;border-radius:8px;padding:12px 16px;margin-bottom:20px;}
+    .slider-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:10px;color:#9c9690;}
+    .slider-labels{display:flex;justify-content:space-between;margin-top:6px;font-size:9px;color:#9c9690;}
+    .delta{font-size:12px;font-weight:700;font-family:'DM Mono',monospace;color:${gapColor};}
+    h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6b6660;margin:20px 0 8px;padding-bottom:4px;border-bottom:1px solid #e5e0d8;}
+    table{width:100%;border-collapse:collapse;font-size:11px;}
+    th{background:#f4f2ec;text-align:left;padding:7px 10px;font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#6b6660;font-weight:700;border-bottom:2px solid #e5e0d8;}
+    td{padding:7px 10px;border-bottom:1px solid #f0ede6;color:#1a1814;}
+    tr:nth-child(even) td{background:#faf9f7;}
+    tr:last-child td{border-bottom:none;}
+    .footer{margin-top:24px;padding-top:12px;border-top:1px solid #e5e0d8;font-size:9px;color:#9c9690;display:flex;justify-content:space-between;}
+  </style>
+  </head><body>
+  <div class="header">
+    <div class="brand">Rental<span>Comp</span> Intelligence</div>
+    <div class="date">Report generated ${date}</div>
+  </div>
+
+  <div class="subject-block">
+    <div class="s-addr">${currentSubject.address}</div>
+    <div class="s-meta">${[currentSubject.bedrooms?currentSubject.bedrooms+' bd':null,currentSubject.bathrooms?currentSubject.bathrooms+' ba':null,currentSubject.squareFootage?currentSubject.squareFootage.toLocaleString()+' sqft':null,currentSubject.propertyType].filter(Boolean).join(' · ')}</div>
+    <div>
+      <span class="s-price">$${subjectPrice.toLocaleString()}/mo</span>
+      ${currentSubject.isActive?'<span class="s-badge">Active</span>':''}
+    </div>
+    <div class="s-dom">${currentSubject.dom?currentSubject.dom+' DOM · ':''}Rentcast est: $${currentSubject.rent.toLocaleString()} · Range: $${currentSubject.rentRangeLow.toLocaleString()}–$${currentSubject.rentRangeHigh.toLocaleString()}</div>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="tile-lbl">In view</div><div class="tile-val">${included.length}</div></div>
+    <div class="tile"><div class="tile-lbl">Median rent</div><div class="tile-val">$${median.toLocaleString()}</div></div>
+    <div class="tile"><div class="tile-lbl">Range</div><div class="tile-val" style="font-size:13px;">$${minRent.toLocaleString()}–$${maxRent.toLocaleString()}</div></div>
+    <div class="tile"><div class="tile-lbl">Avg $/sqft</div><div class="tile-val">$${avgPpsf.toFixed(2)}</div></div>
+  </div>
+
+  <div class="estimate-tiles">
+    <div class="etile"><div class="etile-lbl">Asking</div><div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:#c8522a;">$${subjectPrice.toLocaleString()}</div></div>
+    <div class="etile"><div class="etile-lbl">Comp est.</div><div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:#1a4f8c;">$${compEstimate.toLocaleString()}</div></div>
+    <div class="etile"><div class="etile-lbl">Rentcast</div><div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:#6b6660;">$${currentSubject.rent.toLocaleString()}</div></div>
+  </div>
+
+  <div class="slider-wrap">
+    <div class="slider-row"><span>${included.length} included</span><span class="delta">${gap>0?'+':'-'}$${Math.abs(gap).toLocaleString()}</span></div>
+    <svg viewBox="0 0 600 20" width="100%" height="20" style="display:block;" preserveAspectRatio="none">
+      <rect x="0" y="7" width="600" height="6" rx="3" fill="#e5e7eb"/>
+      <rect x="${Math.round(compPct*6-5)}" y="2" width="10" height="16" rx="2" fill="#1a4f8c"/>
+      <rect x="${Math.round(pct*6-5)}" y="5" width="10" height="10" rx="2" fill="#c8522a"/>
+    </svg>
+    <div class="slider-labels"><span>$${minRent.toLocaleString()}</span><span>$${maxRent.toLocaleString()}</span></div>
+  </div>
+
+  <h2>Included comps (${included.length})</h2>
+  <table>
+    <thead><tr><th>Address</th><th>Bd/Ba</th><th>Sqft</th><th>Rent</th><th>$/sqft</th><th>DOM</th><th>Status</th><th>Distance</th></tr></thead>
+    <tbody>${compRows}</tbody>
+  </table>
+
+  ${excl.length ? '<h2>Excluded comps (' + excl.length + ')</h2><table><thead><tr><th>Address</th><th>Bd/Ba</th><th>Sqft</th><th>Rent</th><th>$/sqft</th><th>DOM</th><th>Status</th><th>Distance</th></tr></thead><tbody>' + exclRows + '</tbody></table>' : ''}
+
+  <div class="footer">
+    <span>RentalComp Intelligence · Realty 25 AZ · Alik Levin, Broker</span>
+    <span>Data: Rentcast · Prices may have changed · Verify on Zillow</span>
+  </div>
+  </body></html>`;
+
+  const w = window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(()=>w.print(), 800);
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  try {
+    loadCacheFromStorage();
+    initMap();
+    document.getElementById('stats-strip').classList.add('visible');
+    document.getElementById('addr-input').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
+    initAccess(); // triggers doSearch after key validated
+  } catch(e) {
+    document.body.insertAdjacentHTML('afterbegin','<div style="position:fixed;top:0;left:0;right:0;background:#dc2626;color:white;padding:10px;font-size:12px;z-index:99999;font-family:monospace;">ERROR: '+e.message+'</div>');
+  }
+});
+</script>
+</body>
+</html>.subject-card .s-addr { font-size: 12px; font-weight: 500; margin-bottom: 3px; line-height: 1.4; }
 .subject-card .s-meta { font-size: 10px; color: rgba(255,255,255,0.45); margin-bottom: 6px; }
 .subject-card .s-rent { font-size: 20px; font-weight: 600; color: var(--gold); font-family: var(--mono); }
 .subject-card .s-range { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 2px; }
