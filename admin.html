@@ -3,8 +3,9 @@
 <head>
 <!--
   RentalComp Admin — admin.html
-  v1.0  2026-04-07  Initial: requests table, approve with magic link, keys table, revoke
-                    // Commit: add admin panel for access key management
+  v2.0  2026-04-08  Tier preset buttons (Trial/Consultation/Investor), tier name in keys table
+                    // Commit: add tier presets to admin - Trial/Consultation/Investor
+  v1.0  2026-04-07  Initial: requests table, approve, keys table, revoke
 -->
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
@@ -120,9 +121,11 @@ async function loadRequests() {
         ? '<span class="badge badge-approved">Approved</span>'
         : '<span class="badge badge-pending">Pending</span>';
       const action = r.status === 'pending'
-        ? 'Days: <input class="days-input" type="number" value="7" min="1" max="90" id="days-'+btoa(r.email).replace(/=/g,'')+'" /> '
-          + 'Addrs: <input class="days-input" type="number" value="3" min="1" max="50" id="addrs-'+btoa(r.email).replace(/=/g,'')+'" /> '
-          + '<button class="btn-green" onclick="approve(\''+r.email+'\')">Approve</button>'
+        ? '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">'
+          + '<button class="btn-green" onclick="approveTier(\''+r.email+'\',3,7)" style="font-size:10px;padding:3px 8px;">Trial<br><span style="font-weight:400;opacity:0.7;">3 · 7d · Free</span></button>'
+          + '<button class="btn-green" onclick="approveTier(\''+r.email+'\',10,30)" style="font-size:10px;padding:3px 8px;">Consultation<br><span style="font-weight:400;opacity:0.7;">10 · 30d · $49</span></button>'
+          + '<button class="btn-green" onclick="approveTier(\''+r.email+'\',25,90)" style="font-size:10px;padding:3px 8px;">Investor<br><span style="font-weight:400;opacity:0.7;">25 · 90d · $99</span></button>'
+          + '</div>'
         : '<span style="color:#6b6660;font-size:11px;">Key: '+(r.key||'—')+'</span>';
       return '<tr><td>'+r.email+'</td><td>'+date+'</td><td>'+badge+'</td><td></td><td>'+action+'</td></tr>';
     }).join('');
@@ -145,10 +148,11 @@ async function loadKeys() {
       const searches = (k.searches||[]);
       const uniqueAddresses = [...new Set(searches.map(s=>s.address))];
       const addressLimit = k.addressLimit || '∞';
+      const tierName = k.addressLimit === 3 ? 'Trial' : k.addressLimit === 10 ? 'Consultation' : k.addressLimit === 25 ? 'Investor' : 'Custom';
       const searchCell = uniqueAddresses.length
-        ? '<span style="font-size:11px;font-weight:600;">'+uniqueAddresses.length+'/'+addressLimit+'</span><br>'
+        ? '<span style="font-size:11px;font-weight:600;">'+uniqueAddresses.length+'/'+addressLimit+'</span> <span style="font-size:10px;color:#c9a84c;">'+tierName+'</span><br>'
           + uniqueAddresses.map(a=>'<span style="font-size:10px;color:#6b6660;display:block;">'+a+'</span>').join('')
-        : '<span style="color:#6b6660;font-size:11px;">none yet</span>';
+        : '<span style="color:#6b6660;font-size:11px;">none yet</span> <span style="font-size:10px;color:#c9a84c;">'+tierName+'</span>';
       const badge = !k.active ? '<span class="badge badge-inactive">Revoked</span>'
         : isExpired ? '<span class="badge badge-expired">Expired</span>'
         : '<span class="badge badge-active">Active</span>';
@@ -171,12 +175,7 @@ async function loadKeys() {
   }
 }
 
-async function approve(email) {
-  const id = btoa(email).replace(/=/g,'');
-  const daysEl = document.getElementById('days-'+id);
-  const addrEl = document.getElementById('addrs-'+id);
-  const days = daysEl ? parseInt(daysEl.value) || 7 : 7;
-  const addressLimit = addrEl ? parseInt(addrEl.value) || 3 : 3;
+async function approveTier(email, addressLimit, days) {
   try {
     const result = await api('/admin/approve', 'POST', { email, days, addressLimit });
     if (result.key) {
