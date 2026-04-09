@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.3</title>
+<title>RentalComp Intelligence v5.4</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -265,6 +265,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.4  2026-04-09  Skip logging default demo address — doesn't count against user's limit
+                     // Commit: don't count default address against trial/tier limit
    v5.3  2026-04-08  Gate footer: "Have an access key? Enter it here"
                      // Commit: update gate copy - key entry not magic link
    v5.2  2026-04-08  Dedup on Rentcast propertyId not address string
@@ -547,10 +549,11 @@ async function doSearch() {
         searchCache[cacheKey]={subject,comps};
         setSearchCache(searchCache);
         setStatus('ok','Live · '+comps.length+' comps');
-        // Log using property ID (Rentcast canonical) — not raw input string
+        // Log search — skip default demo address, don't count against user's limit
         const logAddress = propDetails.canonicalAddress || subject.address;
         const logId = propDetails.propertyId || null;
-        if(accessKey){fetch(WORKER_URL+'/log-search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:accessKey,address:logAddress,propertyId:logId})}).catch(()=>{});}
+        const isDefaultAddr = addr.trim().toLowerCase() === DEFAULT_ADDRESS.toLowerCase();
+        if(accessKey && !isDefaultAddr){fetch(WORKER_URL+'/log-search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:accessKey,address:logAddress,propertyId:logId})}).catch(()=>{});}
       }
     } else {
       await new Promise(r=>setTimeout(r,600));
@@ -629,7 +632,7 @@ function placeSubject(s) {
   });
 }
 
-// ── Excluded comps set ──
+const DEFAULT_ADDRESS = '10394 E Morning Star Dr, Scottsdale, AZ 85255';
 const excluded = new Set();
 
 function excludedIcon() {
