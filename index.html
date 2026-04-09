@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.4</title>
+<title>RentalComp Intelligence v5.6</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -210,10 +210,13 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
   
   <div class="panel collapsed" id="panel">
     <div class="panel-top">
-      <input type="text" id="addr-input" placeholder="Enter property address…" value="10394 E Morning Star Dr, Scottsdale, AZ 85255" />
+      <div style="position:relative;flex:1;min-width:0;display:flex;align-items:center;">
+        <input type="text" id="addr-input" placeholder="Enter property address…" value="10394 E Morning Star Dr, Scottsdale, AZ 85255" style="width:100%;padding-right:26px;" />
+        <span id="clear-btn" onclick="clearSearch()" title="Clear" style="position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:14px;color:#9c9690;cursor:pointer;line-height:1;display:none;">✕</span>
+      </div>
       <button class="btn-go" id="search-btn" onclick="doSearch()">Go</button>
       <div class="btn-toggle" id="toggle-btn" onclick="togglePanel()" aria-label="Toggle menu" style="font-size:16px;letter-spacing:-1px;">☰</div>
-      <div class="btn-toggle" id="pdf-btn" onclick="generateReport()" title="Export PDF report" style="display:none;">⬇</div>
+      <div class="btn-toggle" id="pdf-btn" onclick="generateReport()" title="Print / Save PDF" style="display:none;">🖨</div>
     </div>
     <div class="panel-body">
       <div class="subject-card" id="subject-card">
@@ -247,7 +250,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
-      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.3</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.6</span>
     </div>
   </div>
 
@@ -265,6 +268,17 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.6  2026-04-09  In-session limit enforcement: pass _key on AVM search call,
+                     Worker returns 429 if limit reached, showLimitReached() overlay
+                     replaces gate with friendly message + contact link
+                     // Commit: server-side search limit enforcement + limit-reached UI
+   v5.5  2026-04-09  Bug fixes from first live user test (Linoyka, iPhone):
+                     - PDF button: ⬇ → 🖨 printer icon for better intuition
+                     - PDF mobile: replace window.open+document.write (blocked by mobile browsers)
+                       with Blob URL approach; falls back to .html download if popup blocked
+                     - Search clear: ✕ button appears in input field when text present, clears + refocuses
+                     - In-session limit: frontend-only placeholder — enforcement moved to Worker (see Worker v1.x)
+                     // Commit: live user feedback fixes - printer icon, PDF mobile, clear button
    v5.4  2026-04-09  Skip logging default demo address — doesn't count against user's limit
                      // Commit: don't count default address against trial/tier limit
    v5.3  2026-04-08  Gate footer: "Have an access key? Enter it here"
@@ -530,10 +544,16 @@ async function doSearch() {
         comps=searchCache[cacheKey].comps;
         setStatus('ok','Cached · '+comps.length+' comps');
       } else {
-        // Cache miss — fetch live
+        // Cache miss — fetch live. Pass _key so Worker enforces limit before proxying.
         setStatus('loading','Calling Rentcast…');
         const params=new URLSearchParams({address:addr,propertyType:'Single Family',compCount:20});
+        if(accessKey) params.set('_key', accessKey);
         const res=await fetch(`${base}/rentcast/avm/rent/long-term?${params}`);
+        if(res.status===429){
+          const errData=await res.json().catch(()=>({}));
+          showLimitReached(errData.addressLimit, errData.used);
+          return;
+        }
         if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e?.error||`API error ${res.status}`);}
         const data=await res.json();
         let propDetails={},listingData={};
@@ -1080,10 +1100,26 @@ function generateReport() {
   </div>
   </body></html>`;
 
-  const w = window.open('','_blank');
-  w.document.write(html);
-  w.document.close();
-  setTimeout(()=>w.print(), 800);
+  // Blob URL approach — works on mobile Safari/Chrome (window.open popup is blocked)
+  const blob = new Blob([html], {type: 'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  // On mobile: open in new tab (user can use browser's share/print)
+  // On desktop: open and trigger print dialog
+  const newWin = window.open(url, '_blank');
+  if (newWin) {
+    newWin.addEventListener('load', () => { newWin.print(); });
+  } else {
+    // Fallback if popup blocked: force download as .html then open
+    a.download = 'RentalComp-Report.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
@@ -1091,12 +1127,42 @@ document.addEventListener('DOMContentLoaded',()=>{
     loadCacheFromStorage();
     initMap();
     document.getElementById('stats-strip').classList.add('visible');
-    document.getElementById('addr-input').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
+    const addrInput = document.getElementById('addr-input');
+    const clearBtn = document.getElementById('clear-btn');
+    addrInput.addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
+    addrInput.addEventListener('input',()=>{
+      clearBtn.style.display = addrInput.value.length > 0 ? 'block' : 'none';
+    });
+    // Show clear btn if default address is pre-filled
+    if(addrInput.value.length > 0) clearBtn.style.display = 'block';
     initAccess(); // triggers doSearch after key validated
   } catch(e) {
     document.body.insertAdjacentHTML('afterbegin','<div style="position:fixed;top:0;left:0;right:0;background:#dc2626;color:white;padding:10px;font-size:12px;z-index:99999;font-family:monospace;">ERROR: '+e.message+'</div>');
   }
 });
+
+function showLimitReached(limit, used) {
+  document.getElementById('search-btn').disabled = false;
+  setStatus('error', 'Search limit reached');
+  // Show the gate overlay with a limit-reached message
+  const gate = document.getElementById('gate');
+  document.getElementById('gate-content').innerHTML =
+    '<div class="gate-title" style="color:#f87171;">Search Limit Reached</div>'
+    +'<div class="gate-sub">You\'ve used all '+(limit||used||'your')+' searches in this trial.'
+    +' Reach out to Alik to unlock more or discuss a full access plan.</div>'
+    +'<div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;">'
+    +'<a href="mailto:alik@realty25az.com?subject=RentalComp%20Access&body=Hi%20Alik%2C%20I%20reached%20my%20trial%20limit%20and%20would%20like%20to%20continue%20using%20RentalComp%20Intelligence." '
+    +'style="display:inline-block;padding:11px 20px;background:var(--gold);color:var(--navy);border-radius:9px;font-weight:700;font-size:13px;text-decoration:none;">Contact Alik Levin ↗</a>'
+    +'</div>';
+  gate.style.display = 'flex';
+}
+
+function clearSearch() {
+  const addrInput = document.getElementById('addr-input');
+  addrInput.value = '';
+  document.getElementById('clear-btn').style.display = 'none';
+  addrInput.focus();
+}
 </script>
 </body>
 </html>
