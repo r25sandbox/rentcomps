@@ -166,7 +166,7 @@ async function loadKeys() {
           + '</div>';
       return '<tr>'
         +'<td><span style="font-family:monospace;color:#c9a84c;">'+k.key+'</span>'
-        +' <button class="copy" onclick="copyText(\''+magicLink+'\')">Copy link</button></td>'
+        +' <button class="copy" onclick="copyText(\''+k.key+'\')">Copy key</button></td>'
         +'<td>'+k.email+'</td>'
         +'<td>'+created+'</td>'
         +'<td>'+expires+'</td>'
@@ -184,7 +184,7 @@ async function approveTier(email, addressLimit, days) {
   try {
     const result = await api('/admin/approve', 'POST', { email, days, addressLimit });
     if (result.key) {
-      prompt('Key created! Copy this magic link to send to ' + email + ':', result.magicLink);
+      prompt('Access key for ' + email + ' — send this to them with instructions to enter it at r25sandbox.carrd.co:', result.magicLink);
       loadAll();
     } else {
       alert('Error: ' + JSON.stringify(result));
