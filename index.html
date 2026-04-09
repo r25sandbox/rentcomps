@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.1</title>
+<title>RentalComp Intelligence v5.2</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -264,8 +264,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v5.1  2026-04-08  Log Rentcast-normalized address for search tracking (no input duplicates)
-                     // Commit: fix duplicate address counting - use normalized address
+   v5.2  2026-04-08  Dedup on Rentcast propertyId not address string
+                     // Commit: use propertyId for search dedup - address strings unreliable
    v5.0  2026-04-08  Search result cache (localStorage, cross-session), fix orphaned mock code
                      // Commit: add search cache + fix orphaned mock code in doSearch
    v4.9b 2026-04-08  Rollback to v4.9 stable
@@ -536,7 +536,7 @@ async function doSearch() {
           fetch(`${base}/rentcast/properties?address=${encodeURIComponent(addr)}&limit=1`),
           fetch(`${base}/zillow-price?address=${encodeURIComponent(addr)}`)
         ]);
-        if(pRes.status==='fulfilled'&&pRes.value.ok){const d=await pRes.value.json();const r=Array.isArray(d)?d[0]:d;propDetails={bedrooms:r?.bedrooms,bathrooms:r?.bathrooms,squareFootage:r?.squareFootage,propertyType:r?.propertyType};}
+        if(pRes.status==='fulfilled'&&pRes.value.ok){const d=await pRes.value.json();const r=Array.isArray(d)?d[0]:d;propDetails={bedrooms:r?.bedrooms,bathrooms:r?.bathrooms,squareFootage:r?.squareFootage,propertyType:r?.propertyType,propertyId:r?.id,canonicalAddress:r?.formattedAddress};}
         if(zRes.status==='fulfilled'&&zRes.value.ok){listingData=await zRes.value.json();}
         subject={address:addr,lat:data.latitude,lng:data.longitude,bedrooms:data.bedrooms||propDetails.bedrooms,bathrooms:data.bathrooms||propDetails.bathrooms,squareFootage:data.squareFootage||propDetails.squareFootage,propertyType:data.propertyType||propDetails.propertyType||'SFR',rent:Math.round(data.rent),rentRangeLow:Math.round(data.rentRangeLow),rentRangeHigh:Math.round(data.rentRangeHigh),askingPrice:listingData.price||null,isActive:listingData.status==='Active',dom:listingData.daysOnMarket||null,priceSource:listingData.source||null};
         comps=(data.comparables||[]).map((c,i)=>({id:i,formattedAddress:c.formattedAddress||c.address,latitude:c.latitude,longitude:c.longitude,bedrooms:c.bedrooms,bathrooms:c.bathrooms,squareFootage:c.squareFootage,price:Math.round(c.price),status:c.status||'Active',daysOnMarket:c.daysOnMarket||null,propertyType:c.propertyType||'SFR'}));
@@ -544,8 +544,10 @@ async function doSearch() {
         searchCache[cacheKey]={subject,comps};
         setSearchCache(searchCache);
         setStatus('ok','Live · '+comps.length+' comps');
-        // Log search
-        if(accessKey){fetch(WORKER_URL+'/log-search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:accessKey,address:subject.address})}).catch(()=>{});}
+        // Log using property ID (Rentcast canonical) — not raw input string
+        const logAddress = propDetails.canonicalAddress || subject.address;
+        const logId = propDetails.propertyId || null;
+        if(accessKey){fetch(WORKER_URL+'/log-search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:accessKey,address:logAddress,propertyId:logId})}).catch(()=>{});}
       }
     } else {
       await new Promise(r=>setTimeout(r,600));
