@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.0</title>
+<title>RentalComp Intelligence v5.1</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -264,6 +264,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.1  2026-04-08  Log Rentcast-normalized address for search tracking (no input duplicates)
+                     // Commit: fix duplicate address counting - use normalized address
    v5.0  2026-04-08  Search result cache (localStorage, cross-session), fix orphaned mock code
                      // Commit: add search cache + fix orphaned mock code in doSearch
    v4.9b 2026-04-08  Rollback to v4.9 stable
@@ -543,7 +545,7 @@ async function doSearch() {
         setSearchCache(searchCache);
         setStatus('ok','Live · '+comps.length+' comps');
         // Log search
-        if(accessKey){fetch(WORKER_URL+'/log-search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:accessKey,address:addr})}).catch(()=>{});}
+        if(accessKey){fetch(WORKER_URL+'/log-search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:accessKey,address:subject.address})}).catch(()=>{});}
       }
     } else {
       await new Promise(r=>setTimeout(r,600));
