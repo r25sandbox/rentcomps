@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.2</title>
+<title>RentalComp Intelligence v5.3</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -247,6 +247,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.3</span>
     </div>
   </div>
 
@@ -264,8 +265,10 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.3  2026-04-08  Gate footer: "Have an access key? Enter it here"
+                     // Commit: update gate copy - key entry not magic link
    v5.2  2026-04-08  Dedup on Rentcast propertyId not address string
-                     // Commit: use propertyId for search dedup - address strings unreliable
+                     // Commit: use propertyId for search dedup
    v5.0  2026-04-08  Search result cache (localStorage, cross-session), fix orphaned mock code
                      // Commit: add search cache + fix orphaned mock code in doSearch
    v4.9b 2026-04-08  Rollback to v4.9 stable
