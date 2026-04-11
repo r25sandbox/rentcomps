@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.9</title>
+<title>RentalComp Intelligence v5.10</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -251,7 +251,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
-      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.9</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.10</span>
     </div>
   </div>
 
@@ -269,6 +269,10 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.10 2026-04-11  Drop pool indicator (not reliably in Rentcast features object — confirmed via DevTools)
+                     HOA: show 'not in Rentcast data' when absent so absence is explicit not silent
+                     HOA extraction simplified: hoa.fee with hoaFee fallback, no pool logic
+                     // Commit: drop pool badge, explicit HOA absence label
    v5.9  2026-04-11  PDF: navy branded header with broker name + contact, navy footer with links
                      HOA/pool extraction hardened: handles array or object features, hoaFee fallback
                      Added console.log for HOA/pool debug visibility in DevTools
@@ -586,17 +590,13 @@ async function doSearch() {
         if(pRes.status==='fulfilled'&&pRes.value.ok){
           const d=await pRes.value.json();
           const r=Array.isArray(d)?d[0]:d;
-          // features can be object {pool:true} or array ['Pool','Spa'] depending on Rentcast response version
-          const feat=r?.features||{};
-          const poolVal = Array.isArray(feat)
-            ? feat.some(f=>typeof f==='string'&&f.toLowerCase().includes('pool'))
-            : (feat.pool===true||feat.pool==='true'||feat.pool==='Yes');
+          // Pool is not reliably present in Rentcast's features object — omitted
+          // HOA fee: try hoa.fee first, then top-level hoaFee
           const hoaFee = r?.hoa?.fee ?? r?.hoaFee ?? null;
-          propDetails={bedrooms:r?.bedrooms,bathrooms:r?.bathrooms,squareFootage:r?.squareFootage,propertyType:r?.propertyType,propertyId:r?.id,canonicalAddress:r?.formattedAddress,hoa:hoaFee?Number(hoaFee):null,pool:poolVal};
-          console.log('[RentalComp] propDetails HOA:',hoaFee,'pool:',poolVal,'raw features:',feat,'raw hoa:',r?.hoa);
+          propDetails={bedrooms:r?.bedrooms,bathrooms:r?.bathrooms,squareFootage:r?.squareFootage,propertyType:r?.propertyType,propertyId:r?.id,canonicalAddress:r?.formattedAddress,hoa:hoaFee?Number(hoaFee):null};
         }
         if(zRes.status==='fulfilled'&&zRes.value.ok){listingData=await zRes.value.json();}
-        subject={address:addr,lat:data.latitude,lng:data.longitude,bedrooms:data.bedrooms||propDetails.bedrooms,bathrooms:data.bathrooms||propDetails.bathrooms,squareFootage:data.squareFootage||propDetails.squareFootage,propertyType:data.propertyType||propDetails.propertyType||'SFR',rent:Math.round(data.rent),rentRangeLow:Math.round(data.rentRangeLow),rentRangeHigh:Math.round(data.rentRangeHigh),askingPrice:listingData.price||null,isActive:listingData.status==='Active',dom:listingData.daysOnMarket||null,priceSource:listingData.source||null,hoa:propDetails.hoa||null,pool:propDetails.pool||false};
+        subject={address:addr,lat:data.latitude,lng:data.longitude,bedrooms:data.bedrooms||propDetails.bedrooms,bathrooms:data.bathrooms||propDetails.bathrooms,squareFootage:data.squareFootage||propDetails.squareFootage,propertyType:data.propertyType||propDetails.propertyType||'SFR',rent:Math.round(data.rent),rentRangeLow:Math.round(data.rentRangeLow),rentRangeHigh:Math.round(data.rentRangeHigh),askingPrice:listingData.price||null,isActive:listingData.status==='Active',dom:listingData.daysOnMarket||null,priceSource:listingData.source||null,hoa:propDetails.hoa||null};
         comps=(data.comparables||[]).map((c,i)=>({id:i,formattedAddress:c.formattedAddress||c.address,latitude:c.latitude,longitude:c.longitude,bedrooms:c.bedrooms,bathrooms:c.bathrooms,squareFootage:c.squareFootage,price:Math.round(c.price),status:c.status||'Active',daysOnMarket:c.daysOnMarket||null,propertyType:c.propertyType||'SFR'}));
         // Save to cache
         searchCache[cacheKey]={subject,comps};
@@ -644,9 +644,10 @@ function placeSubject(s) {
       +'<div style="font-size:10px;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:4px 8px;margin-top:6px;line-height:1.5;">⚠ Verify on <a href="'+zillowUrl(s.address)+'" target="_blank" style="color:#92400e;font-weight:600;text-decoration:underline;">Zillow</a> — may have changed.</div>'
     : '<div style="font-size:10px;color:#9ca3af;">Rentcast estimate · Range: $'+s.rentRangeLow.toLocaleString()+' – $'+s.rentRangeHigh.toLocaleString()+'</div>';
   const metaRow = [bedsStr,sqftStr,ppsf].filter(Boolean).join(' · ');
-  const hoaBadge = s.hoa ? '<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;margin-right:4px;">HOA $'+s.hoa.toLocaleString()+'/mo</span>' : '';
-  const poolBadge = s.pool ? '<span style="background:#dbeafe;color:#1e40af;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;">🏊 Pool</span>' : '';
-  const amenityRow = (hoaBadge || poolBadge) ? '<div style="margin-top:5px;">'+hoaBadge+poolBadge+'</div>' : '';
+  const hoaBadge = s.hoa
+    ? '<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;">HOA $'+s.hoa.toLocaleString()+'/mo</span>'
+    : '<span style="font-size:9px;color:#9ca3af;">HOA: not in Rentcast data</span>';
+  const amenityRow = '<div style="margin-top:5px;">'+hoaBadge+'</div>';
   const div=document.createElement('div');
   div.innerHTML=
     '<div class="popup-rent">Subject Property</div>'
@@ -845,9 +846,9 @@ function updateSubjectCard(s) {
   // HOA + pool badges in subject card
   const scBadges = document.getElementById('sc-badges');
   if(scBadges) {
-    scBadges.innerHTML = '';
-    if(s.hoa) scBadges.insertAdjacentHTML('beforeend','<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-right:4px;">HOA $'+s.hoa.toLocaleString()+'/mo</span>');
-    if(s.pool) scBadges.insertAdjacentHTML('beforeend','<span style="background:#dbeafe;color:#1e40af;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;">🏊 Pool</span>');
+    scBadges.innerHTML = s.hoa
+      ? '<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;">HOA $'+s.hoa.toLocaleString()+'/mo</span>'
+      : '<span style="font-size:9px;color:rgba(255,255,255,0.3);">HOA: not in Rentcast data</span>';
   }
   const displayPrice=s.askingPrice||s.rent;
   document.getElementById('sc-rent').textContent='$'+displayPrice.toLocaleString()+'/mo';
@@ -1115,7 +1116,10 @@ function generateReport() {
   <div class="subject-block">
     <div class="s-addr"><a href="https://www.zillow.com/homes/for_rent/${encodeURIComponent(currentSubject.address)}_rb/" target="_blank" style="color:#0d1b2e;text-decoration:none;">${currentSubject.address} ↗</a></div>
     <div class="s-meta">${[currentSubject.bedrooms?currentSubject.bedrooms+' bd':null,currentSubject.bathrooms?currentSubject.bathrooms+' ba':null,currentSubject.squareFootage?currentSubject.squareFootage.toLocaleString()+' sqft':null,currentSubject.propertyType].filter(Boolean).join(' · ')}</div>
-    ${(currentSubject.hoa||currentSubject.pool)?`<div style="margin-bottom:8px;">${currentSubject.hoa?`<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-right:6px;">HOA $${currentSubject.hoa.toLocaleString()}/mo</span>`:''}${currentSubject.pool?'<span style="background:#dbeafe;color:#1e40af;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">🏊 Pool</span>':''}</div>`:''}
+    <div style="margin-bottom:8px;">${currentSubject.hoa
+      ? `<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">HOA $${currentSubject.hoa.toLocaleString()}/mo</span>`
+      : '<span style="font-size:10px;color:#9c9690;">HOA: not in Rentcast data</span>'
+    }</div>
     <div>
       <span class="s-price">$${subjectPrice.toLocaleString()}/mo</span>
       ${currentSubject.isActive?'<span class="s-badge">Active</span>':''}
