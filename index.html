@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.8</title>
+<title>RentalComp Intelligence v5.9</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -251,7 +251,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
-      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.8</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.9</span>
     </div>
   </div>
 
@@ -269,6 +269,10 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.9  2026-04-11  PDF: navy branded header with broker name + contact, navy footer with links
+                     HOA/pool extraction hardened: handles array or object features, hoaFee fallback
+                     Added console.log for HOA/pool debug visibility in DevTools
+                     // Commit: PDF branding overhaul + hardened HOA/pool extraction
    v5.8  2026-04-11  HOA fee + pool indicator on subject popup, subject card, and PDF report
                      PDF table: all addresses linked to Zillow (subject + comps + excluded)
                      HOA/pool from /properties endpoint (subject only — comps don't support it)
@@ -579,7 +583,18 @@ async function doSearch() {
           fetch(`${base}/rentcast/properties?address=${encodeURIComponent(addr)}&limit=1`),
           fetch(`${base}/zillow-price?address=${encodeURIComponent(addr)}`)
         ]);
-        if(pRes.status==='fulfilled'&&pRes.value.ok){const d=await pRes.value.json();const r=Array.isArray(d)?d[0]:d;propDetails={bedrooms:r?.bedrooms,bathrooms:r?.bathrooms,squareFootage:r?.squareFootage,propertyType:r?.propertyType,propertyId:r?.id,canonicalAddress:r?.formattedAddress,hoa:r?.hoa?.fee||null,pool:r?.features?.pool||false};}
+        if(pRes.status==='fulfilled'&&pRes.value.ok){
+          const d=await pRes.value.json();
+          const r=Array.isArray(d)?d[0]:d;
+          // features can be object {pool:true} or array ['Pool','Spa'] depending on Rentcast response version
+          const feat=r?.features||{};
+          const poolVal = Array.isArray(feat)
+            ? feat.some(f=>typeof f==='string'&&f.toLowerCase().includes('pool'))
+            : (feat.pool===true||feat.pool==='true'||feat.pool==='Yes');
+          const hoaFee = r?.hoa?.fee ?? r?.hoaFee ?? null;
+          propDetails={bedrooms:r?.bedrooms,bathrooms:r?.bathrooms,squareFootage:r?.squareFootage,propertyType:r?.propertyType,propertyId:r?.id,canonicalAddress:r?.formattedAddress,hoa:hoaFee?Number(hoaFee):null,pool:poolVal};
+          console.log('[RentalComp] propDetails HOA:',hoaFee,'pool:',poolVal,'raw features:',feat,'raw hoa:',r?.hoa);
+        }
         if(zRes.status==='fulfilled'&&zRes.value.ok){listingData=await zRes.value.json();}
         subject={address:addr,lat:data.latitude,lng:data.longitude,bedrooms:data.bedrooms||propDetails.bedrooms,bathrooms:data.bathrooms||propDetails.bathrooms,squareFootage:data.squareFootage||propDetails.squareFootage,propertyType:data.propertyType||propDetails.propertyType||'SFR',rent:Math.round(data.rent),rentRangeLow:Math.round(data.rentRangeLow),rentRangeHigh:Math.round(data.rentRangeHigh),askingPrice:listingData.price||null,isActive:listingData.status==='Active',dom:listingData.daysOnMarket||null,priceSource:listingData.source||null,hoa:propDetails.hoa||null,pool:propDetails.pool||false};
         comps=(data.comparables||[]).map((c,i)=>({id:i,formattedAddress:c.formattedAddress||c.address,latitude:c.latitude,longitude:c.longitude,bedrooms:c.bedrooms,bathrooms:c.bathrooms,squareFootage:c.squareFootage,price:Math.round(c.price),status:c.status||'Active',daysOnMarket:c.daysOnMarket||null,propertyType:c.propertyType||'SFR'}));
@@ -1048,9 +1063,14 @@ function generateReport() {
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:'DM Sans',sans-serif;color:#1a1814;background:#fff;padding:32px;max-width:900px;margin:0 auto;}
     @media print{body{padding:16px;}@page{margin:16mm;}}
-    .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #0d1b2e;}
-    .brand{font-size:22px;font-weight:700;color:#0d1b2e;letter-spacing:-0.01em;} .brand span{color:#c9a84c;}
-    .date{font-size:11px;color:#6b6660;}
+    .header{background:#0d1b2e;border-radius:10px;padding:20px 24px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;}
+    .brand{font-size:24px;font-weight:700;color:#ffffff;letter-spacing:-0.01em;} .brand span{color:#c9a84c;}
+    .brand-sub{font-size:10px;color:rgba(201,168,76,0.7);text-transform:uppercase;letter-spacing:0.12em;margin-top:2px;}
+    .header-right{text-align:right;}
+    .header-broker{font-size:13px;font-weight:600;color:#c9a84c;margin-bottom:2px;}
+    .header-contact{font-size:10px;color:rgba(255,255,255,0.55);line-height:1.6;}
+    .header-contact a{color:rgba(201,168,76,0.8);text-decoration:none;}
+    .date{font-size:9px;color:rgba(255,255,255,0.35);margin-top:6px;text-align:right;}
     .subject-block{background:#f4f2ec;border-left:4px solid #0d1b2e;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:20px;}
     .s-addr{font-size:15px;font-weight:700;color:#0d1b2e;margin-bottom:4px;}
     .s-meta{font-size:11px;color:#6b6660;margin-bottom:10px;}
@@ -1074,12 +1094,22 @@ function generateReport() {
     td{padding:7px 10px;border-bottom:1px solid #f0ede6;color:#1a1814;}
     tr:nth-child(even) td{background:#faf9f7;}
     tr:last-child td{border-bottom:none;}
-    .footer{margin-top:24px;padding-top:12px;border-top:1px solid #e5e0d8;font-size:9px;color:#9c9690;display:flex;justify-content:space-between;}
+    .footer{margin-top:32px;background:#0d1b2e;border-radius:8px;padding:14px 20px;font-size:9px;color:rgba(255,255,255,0.4);display:flex;justify-content:space-between;align-items:center;} .footer a{color:rgba(201,168,76,0.7);text-decoration:none;}
   </style>
   </head><body>
   <div class="header">
-    <div class="brand">Rental<span>Comp</span> Intelligence</div>
-    <div class="date">Report generated ${date}</div>
+    <div>
+      <div class="brand">Rental<span>Comp</span> Intelligence</div>
+      <div class="brand-sub">Realty 25 AZ</div>
+    </div>
+    <div class="header-right">
+      <div class="header-broker">Alik Levin, Broker</div>
+      <div class="header-contact">
+        <a href="https://realty25az.com">realty25az.com</a> &nbsp;·&nbsp;
+        <a href="mailto:alik@realty25az.com">alik@realty25az.com</a>
+      </div>
+      <div class="date">Report generated ${date}</div>
+    </div>
   </div>
 
   <div class="subject-block">
@@ -1125,8 +1155,8 @@ function generateReport() {
   ${excl.length ? '<h2>Excluded comps (' + excl.length + ')</h2><table><thead><tr><th>Address</th><th>Bd/Ba</th><th>Sqft</th><th>Rent</th><th>$/sqft</th><th>DOM</th><th>Status</th><th>Distance</th></tr></thead><tbody>' + exclRows + '</tbody></table>' : ''}
 
   <div class="footer">
-    <span>RentalComp Intelligence · Realty 25 AZ · Alik Levin, Broker</span>
-    <span>Data: Rentcast · Prices may have changed · Verify on Zillow</span>
+    <span>RentalComp Intelligence &nbsp;·&nbsp; <strong style="color:rgba(255,255,255,0.65);">Realty 25 AZ</strong> &nbsp;·&nbsp; Alik Levin, Broker &nbsp;·&nbsp; <a href="https://realty25az.com">realty25az.com</a> &nbsp;·&nbsp; <a href="mailto:alik@realty25az.com">alik@realty25az.com</a></span>
+    <span>Data: Rentcast &nbsp;·&nbsp; Prices may have changed &nbsp;·&nbsp; Verify on Zillow</span>
   </div>
   </body></html>`;
 
