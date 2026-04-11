@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.7</title>
+<title>RentalComp Intelligence v5.8</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -224,6 +224,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
         <div class="s-meta" id="sc-meta">—</div>
         <div class="s-rent" id="sc-rent">—</div>
         <div class="s-range" id="sc-range">—</div>
+      <div id="sc-badges" style="margin-top:5px;"></div>
       </div>
       <div id="price-bar-wrap" style="display:none;background:#f9f8f5;border-radius:8px;padding:10px 12px;margin-bottom:10px;"></div>
       <div class="filter-row" id="filter-row" style="display:none;">
@@ -250,7 +251,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
-      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.7</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.8</span>
     </div>
   </div>
 
@@ -268,6 +269,10 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.8  2026-04-11  HOA fee + pool indicator on subject popup, subject card, and PDF report
+                     PDF table: all addresses linked to Zillow (subject + comps + excluded)
+                     HOA/pool from /properties endpoint (subject only — comps don't support it)
+                     // Commit: add HOA fee and pool badge to subject; Zillow links in PDF
    v5.7  2026-04-10  User feedback round 2:
                      - Limit reached: generic message, pricing tiers shown, no mailto
                      - PDF excluded rows: no strikethrough, red 'Excluded' badge instead
@@ -574,9 +579,9 @@ async function doSearch() {
           fetch(`${base}/rentcast/properties?address=${encodeURIComponent(addr)}&limit=1`),
           fetch(`${base}/zillow-price?address=${encodeURIComponent(addr)}`)
         ]);
-        if(pRes.status==='fulfilled'&&pRes.value.ok){const d=await pRes.value.json();const r=Array.isArray(d)?d[0]:d;propDetails={bedrooms:r?.bedrooms,bathrooms:r?.bathrooms,squareFootage:r?.squareFootage,propertyType:r?.propertyType,propertyId:r?.id,canonicalAddress:r?.formattedAddress};}
+        if(pRes.status==='fulfilled'&&pRes.value.ok){const d=await pRes.value.json();const r=Array.isArray(d)?d[0]:d;propDetails={bedrooms:r?.bedrooms,bathrooms:r?.bathrooms,squareFootage:r?.squareFootage,propertyType:r?.propertyType,propertyId:r?.id,canonicalAddress:r?.formattedAddress,hoa:r?.hoa?.fee||null,pool:r?.features?.pool||false};}
         if(zRes.status==='fulfilled'&&zRes.value.ok){listingData=await zRes.value.json();}
-        subject={address:addr,lat:data.latitude,lng:data.longitude,bedrooms:data.bedrooms||propDetails.bedrooms,bathrooms:data.bathrooms||propDetails.bathrooms,squareFootage:data.squareFootage||propDetails.squareFootage,propertyType:data.propertyType||propDetails.propertyType||'SFR',rent:Math.round(data.rent),rentRangeLow:Math.round(data.rentRangeLow),rentRangeHigh:Math.round(data.rentRangeHigh),askingPrice:listingData.price||null,isActive:listingData.status==='Active',dom:listingData.daysOnMarket||null,priceSource:listingData.source||null};
+        subject={address:addr,lat:data.latitude,lng:data.longitude,bedrooms:data.bedrooms||propDetails.bedrooms,bathrooms:data.bathrooms||propDetails.bathrooms,squareFootage:data.squareFootage||propDetails.squareFootage,propertyType:data.propertyType||propDetails.propertyType||'SFR',rent:Math.round(data.rent),rentRangeLow:Math.round(data.rentRangeLow),rentRangeHigh:Math.round(data.rentRangeHigh),askingPrice:listingData.price||null,isActive:listingData.status==='Active',dom:listingData.daysOnMarket||null,priceSource:listingData.source||null,hoa:propDetails.hoa||null,pool:propDetails.pool||false};
         comps=(data.comparables||[]).map((c,i)=>({id:i,formattedAddress:c.formattedAddress||c.address,latitude:c.latitude,longitude:c.longitude,bedrooms:c.bedrooms,bathrooms:c.bathrooms,squareFootage:c.squareFootage,price:Math.round(c.price),status:c.status||'Active',daysOnMarket:c.daysOnMarket||null,propertyType:c.propertyType||'SFR'}));
         // Save to cache
         searchCache[cacheKey]={subject,comps};
@@ -624,12 +629,16 @@ function placeSubject(s) {
       +'<div style="font-size:10px;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:4px 8px;margin-top:6px;line-height:1.5;">⚠ Verify on <a href="'+zillowUrl(s.address)+'" target="_blank" style="color:#92400e;font-weight:600;text-decoration:underline;">Zillow</a> — may have changed.</div>'
     : '<div style="font-size:10px;color:#9ca3af;">Rentcast estimate · Range: $'+s.rentRangeLow.toLocaleString()+' – $'+s.rentRangeHigh.toLocaleString()+'</div>';
   const metaRow = [bedsStr,sqftStr,ppsf].filter(Boolean).join(' · ');
+  const hoaBadge = s.hoa ? '<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;margin-right:4px;">HOA $'+s.hoa.toLocaleString()+'/mo</span>' : '';
+  const poolBadge = s.pool ? '<span style="background:#dbeafe;color:#1e40af;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;">🏊 Pool</span>' : '';
+  const amenityRow = (hoaBadge || poolBadge) ? '<div style="margin-top:5px;">'+hoaBadge+poolBadge+'</div>' : '';
   const div=document.createElement('div');
   div.innerHTML=
     '<div class="popup-rent">Subject Property</div>'
     +'<div class="popup-addr">'+s.address+'</div>'
     +'<div class="popup-row">'+metaRow+'</div>'
     +'<div class="popup-row">'+(s.propertyType||'SFR')+'</div>'
+    +amenityRow
     +'<div style="margin-top:8px;">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">'
         +'<span style="font-size:17px;font-weight:600;color:#c8522a;font-family:\'DM Mono\',monospace;">$'+displayPrice.toLocaleString()+'/mo</span>'
@@ -818,6 +827,13 @@ function updateSubjectCard(s) {
   document.getElementById('sc-addr').textContent=s.address;
   const meta=[s.bedrooms?`${s.bedrooms} bd`:null,s.bathrooms?`${s.bathrooms} ba`:null,s.squareFootage?`${s.squareFootage.toLocaleString()} sqft`:null,s.propertyType||null].filter(Boolean).join(' · ');
   document.getElementById('sc-meta').textContent=meta;
+  // HOA + pool badges in subject card
+  const scBadges = document.getElementById('sc-badges');
+  if(scBadges) {
+    scBadges.innerHTML = '';
+    if(s.hoa) scBadges.insertAdjacentHTML('beforeend','<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-right:4px;">HOA $'+s.hoa.toLocaleString()+'/mo</span>');
+    if(s.pool) scBadges.insertAdjacentHTML('beforeend','<span style="background:#dbeafe;color:#1e40af;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;">🏊 Pool</span>');
+  }
   const displayPrice=s.askingPrice||s.rent;
   document.getElementById('sc-rent').textContent='$'+displayPrice.toLocaleString()+'/mo';
   const rangeEl=document.getElementById('sc-range');
@@ -1003,7 +1019,7 @@ function generateReport() {
     const ppsf = c.squareFootage ? '$'+(c.price/c.squareFootage).toFixed(2) : '—';
     const dist = distMi(currentSubject.lat,currentSubject.lng,c.latitude,c.longitude).toFixed(2);
     return `<tr>
-      <td>${c.formattedAddress}</td>
+      <td><a href="https://www.zillow.com/homes/for_rent/${encodeURIComponent(c.formattedAddress)}_rb/" target="_blank" style="color:#1a4f8c;text-decoration:none;font-weight:500;">${c.formattedAddress}</a></td>
       <td style="text-align:center;">${c.bedrooms||'?'}/${c.bathrooms||'?'}</td>
       <td style="text-align:center;">${c.squareFootage?c.squareFootage.toLocaleString():'—'}</td>
       <td style="text-align:center;font-weight:600;">$${c.price.toLocaleString()}</td>
@@ -1015,7 +1031,7 @@ function generateReport() {
   }).join('');
 
   const exclRows = excl.sort((a,b)=>b.price-a.price).map(c=>`<tr style="color:#6b6660;">
-    <td>${c.formattedAddress}</td>
+    <td><a href="https://www.zillow.com/homes/for_rent/${encodeURIComponent(c.formattedAddress)}_rb/" target="_blank" style="color:#9ca3af;text-decoration:none;">${c.formattedAddress}</a></td>
     <td style="text-align:center;">${c.bedrooms||'?'}/${c.bathrooms||'?'}</td>
     <td style="text-align:center;">${c.squareFootage?c.squareFootage.toLocaleString():'—'}</td>
     <td style="text-align:center;">$${c.price.toLocaleString()}</td>
@@ -1067,8 +1083,9 @@ function generateReport() {
   </div>
 
   <div class="subject-block">
-    <div class="s-addr">${currentSubject.address}</div>
+    <div class="s-addr"><a href="https://www.zillow.com/homes/for_rent/${encodeURIComponent(currentSubject.address)}_rb/" target="_blank" style="color:#0d1b2e;text-decoration:none;">${currentSubject.address} ↗</a></div>
     <div class="s-meta">${[currentSubject.bedrooms?currentSubject.bedrooms+' bd':null,currentSubject.bathrooms?currentSubject.bathrooms+' ba':null,currentSubject.squareFootage?currentSubject.squareFootage.toLocaleString()+' sqft':null,currentSubject.propertyType].filter(Boolean).join(' · ')}</div>
+    ${(currentSubject.hoa||currentSubject.pool)?`<div style="margin-bottom:8px;">${currentSubject.hoa?`<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-right:6px;">HOA $${currentSubject.hoa.toLocaleString()}/mo</span>`:''}${currentSubject.pool?'<span style="background:#dbeafe;color:#1e40af;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">🏊 Pool</span>':''}</div>`:''}
     <div>
       <span class="s-price">$${subjectPrice.toLocaleString()}/mo</span>
       ${currentSubject.isActive?'<span class="s-badge">Active</span>':''}
