@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.12</title>
+<title>RentalComp Intelligence v5.10</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -217,7 +217,6 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <button class="btn-go" id="search-btn" onclick="doSearch()">Go</button>
       <div class="btn-toggle" id="toggle-btn" onclick="togglePanel()" aria-label="Toggle menu" style="font-size:16px;letter-spacing:-1px;">☰</div>
       <div class="btn-toggle" id="pdf-btn" onclick="generateReport()" title="Print / Save PDF" style="display:none;">🖨</div>
-      <div class="btn-toggle" id="calc-btn" onclick="sendToCalc()" title="Send to REI Calculator" style="display:none;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="16" height="16" rx="3.5" fill="#FF9500"/><rect x="2.5" y="2.5" width="11" height="4" rx="1" fill="white" fill-opacity="0.9"/><rect x="2.5" y="9" width="3" height="2" rx="0.5" fill="white" fill-opacity="0.9"/><rect x="6.5" y="9" width="3" height="2" rx="0.5" fill="white" fill-opacity="0.9"/><rect x="10.5" y="9" width="3" height="2" rx="0.5" fill="white" fill-opacity="0.9"/><rect x="2.5" y="12.5" width="3" height="2" rx="0.5" fill="white" fill-opacity="0.9"/><rect x="6.5" y="12.5" width="3" height="2" rx="0.5" fill="white" fill-opacity="0.9"/><rect x="10.5" y="12.5" width="3" height="2" rx="0.5" fill="#FF3B30" fill-opacity="0.9"/></svg></div>
     </div>
     <div class="panel-body">
       <div class="subject-card" id="subject-card">
@@ -252,7 +251,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
-      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.12</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.10</span>
     </div>
   </div>
 
@@ -270,13 +269,6 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v5.12 2026-04-15  Fix sendToCalc inputs: vac (not vacancy), loantype '30fixed' (not '30fix')
-                     // Commit: fix calc hand-off input key names to match ric.js applyInputs
-   v5.11 2026-04-15  Calc hand-off: orange calculator button next to printer
-                     sendToCalc() writes new rc_saves entry (address label, comp estimate
-                     as rent, Calc default values for all other inputs) then navigates
-                     to realty25az.com/#calc. Always creates new entry, no merging.
-                     // Commit: add calc hand-off button - send comp estimate to REI Calc
    v5.10 2026-04-11  Drop pool indicator (not reliably in Rentcast features object — confirmed via DevTools)
                      HOA: show 'not in Rentcast data' when absent so absence is explicit not silent
                      HOA extraction simplified: hoa.fee with hoaFee fallback, no pool logic
@@ -513,7 +505,7 @@ const MOCK_COMPS = [
   {id:10,formattedAddress:"9188 E Raintree Dr, Scottsdale, AZ 85258",latitude:33.6928,longitude:-111.8915,bedrooms:3,bathrooms:2,squareFootage:1510,price:2975,status:"Active",daysOnMarket:5,propertyType:"SFR"},
 ];
 
-let map, subjectMarker, allComps=[], compMarkers={}, currentSubject=null, panelOpen=false, lastCompEstimate=null;
+let map, subjectMarker, allComps=[], compMarkers={}, currentSubject=null, panelOpen=false;
 
 function initMap() {
   map = L.map('map',{zoomControl:false}).setView([33.4484,-112.0740],11);
@@ -626,7 +618,6 @@ async function doSearch() {
     document.getElementById('filter-row').style.display='flex';
     document.getElementById('legend-float').classList.add('visible');
     document.getElementById('pdf-btn').style.display='flex';
-    document.getElementById('calc-btn').style.display='flex';
     map.once('moveend', ()=>{ renderVisible(); });
     map.setView([subject.lat,subject.lng],15);
     panelOpen=true;
@@ -899,7 +890,6 @@ function updateCompEstimate(included, median, minRent, maxRent) {
     const avgPpsf = withSqft.reduce((a,c)=>a+(c.price/c.squareFootage),0)/withSqft.length;
     compEstimate = Math.round(avgPpsf * currentSubject.squareFootage);
   }
-  lastCompEstimate = compEstimate; // cache for sendToCalc()
 
   const gap = subjectPrice - compEstimate;
   const gapPct = compEstimate > 0 ? (gap / compEstimate) * 100 : 0;
@@ -1005,39 +995,6 @@ function toggleSection(id) {
   const isOpen = body.style.display !== 'none';
   body.style.display = isOpen ? 'none' : 'block';
   if(arrow) arrow.textContent = isOpen ? '▼' : '▲';
-}
-
-function sendToCalc() {
-  if(!currentSubject) return;
-  const rent = lastCompEstimate || currentSubject.rent;
-  const entry = {
-    id: Date.now(),
-    label: currentSubject.address,
-    savedAt: new Date().toISOString(),
-    inputs: {
-      price: 500000,
-      down: 100000,
-      rent: rent,
-      rate: 6.50,
-      appr: 5.00,
-      vac: 5,
-      taxes: 3000,
-      ins: 1200,
-      maint: 1200,
-      hoa: 150,
-      mgmt: 0,
-      loantype: '30fixed'
-    }
-  };
-  try {
-    const existing = JSON.parse(localStorage.getItem('rc_saves') || '[]');
-    existing.unshift(entry); // prepend so it appears at top of Saved list
-    localStorage.setItem('rc_saves', JSON.stringify(existing));
-  } catch(e) {
-    console.error('[RentalComp] Could not write to localStorage:', e);
-    return;
-  }
-  window.location.href = 'https://realty25az.com/#calc';
 }
 
 function generateReport() {
