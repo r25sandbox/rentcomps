@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.11</title>
+<title>RentalComp Intelligence v5.12</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -252,7 +252,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
-      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.11</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.12</span>
     </div>
   </div>
 
@@ -270,6 +270,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.12 2026-04-15  Fix sendToCalc inputs: vac (not vacancy), loantype '30fixed' (not '30fix')
+                     // Commit: fix calc hand-off input key names to match ric.js applyInputs
    v5.11 2026-04-15  Calc hand-off: orange calculator button next to printer
                      sendToCalc() writes new rc_saves entry (address label, comp estimate
                      as rent, Calc default values for all other inputs) then navigates
@@ -1018,13 +1020,13 @@ function sendToCalc() {
       rent: rent,
       rate: 6.50,
       appr: 5.00,
-      vacancy: 5,
+      vac: 5,
       taxes: 3000,
       ins: 1200,
       maint: 1200,
       hoa: 150,
       mgmt: 0,
-      loantype: '30fix'
+      loantype: '30fixed'
     }
   };
   try {
