@@ -3,6 +3,10 @@
 <head>
 <!--
   RentalComp Admin — admin.html
+  v2.2  2026-04-15  Jira lead link per key row: toggle expand, inline URL input,
+                    Save writes jiraUrl to KV via /admin/update-lead,
+                    button turns blue when link exists, Open ↗ link shown when set
+                    // Commit: add Jira lead tracking to access keys table
   v2.1  2026-04-08  Copy key (not link), prompt shows key not URL, re-approve on revoked keys
                     // Commit: copy key not GitHub URL, re-approve tier buttons on revoked keys
   v2.0  2026-04-08  Tier preset buttons (Trial/Consultation/Investor), tier name in keys table
@@ -46,6 +50,18 @@
   .err{color:#f87171;font-size:12px;margin-top:8px;}
   .searches{font-size:10px;color:#6b6660;}
   .days-input{width:60px;display:inline-block;padding:4px 8px;margin:0 6px;}
+  .btn-jira{background:#2a3a50;color:#c9a84c;border:1px solid #c9a84c;font-size:10px;padding:3px 8px;border-radius:6px;cursor:pointer;}
+  .btn-jira:hover{background:#c9a84c;color:#0d1b2e;}
+  .btn-jira.has-link{background:#1e3a5f;border-color:#60a5fa;color:#60a5fa;}
+  .btn-jira.has-link:hover{background:#60a5fa;color:#0d1b2e;}
+  .jira-row{background:#0f2035;}
+  .jira-row td{padding:8px 10px 10px 10px;}
+  .jira-input{width:100%;max-width:520px;padding:6px 10px;border:1px solid #2a3a50;border-radius:6px;background:#0d1b2e;color:#e5e0d8;font-size:12px;font-family:monospace;}
+  .jira-input:focus{outline:none;border-color:#c9a84c;}
+  .btn-save-jira{background:#c9a84c;color:#0d1b2e;font-size:11px;padding:5px 12px;margin-left:8px;border-radius:6px;cursor:pointer;border:none;font-weight:600;}
+  .btn-save-jira:hover{background:#b8943d;}
+  .jira-link{font-size:11px;color:#60a5fa;margin-left:10px;text-decoration:none;}
+  .jira-link:hover{text-decoration:underline;}
 </style>
 </head>
 <body>
@@ -77,7 +93,7 @@
   <div class="section">
     <div class="section-title">Access Keys</div>
     <table>
-      <thead><tr><th>Key</th><th>Email</th><th>Created</th><th>Expires</th><th>Searches</th><th>Status</th><th>Action</th></tr></thead>
+      <thead><tr><th>Key</th><th>Email</th><th>Created</th><th>Expires</th><th>Searches</th><th>Status</th><th>Action</th><th>Lead</th></tr></thead>
       <tbody id="keys-body"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
     </table>
   </div>
@@ -139,10 +155,10 @@ async function loadRequests() {
 
 async function loadKeys() {
   const tbody = document.getElementById('keys-body');
-  tbody.innerHTML = '<tr><td colspan="7" class="empty">Loading…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="8" class="empty">Loading…</td></tr>';
   try {
     const data = await api('/admin/keys');
-    if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">No keys yet.</td></tr>'; return; }
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty">No keys yet.</td></tr>'; return; }
     tbody.innerHTML = data.map(k => {
       const created = new Date(k.created).toLocaleDateString('en-US',{month:'short',day:'numeric'});
       const expires = new Date(k.expires).toLocaleDateString('en-US',{month:'short',day:'numeric'});
@@ -166,7 +182,11 @@ async function loadKeys() {
           + '<button class="btn-green" onclick="approveTier(\''+k.email+'\',10,30)" style="font-size:10px;padding:3px 6px;">Consult</button>'
           + '<button class="btn-green" onclick="approveTier(\''+k.email+'\',25,90)" style="font-size:10px;padding:3px 6px;">Investor</button>'
           + '</div>';
-      return '<tr>'
+      const jiraUrl = k.jiraUrl || '';
+      const jiraBtnClass = jiraUrl ? 'btn-jira has-link' : 'btn-jira';
+      const jiraBtnLabel = jiraUrl ? '🔗 Jira ✓' : '🔗 Jira';
+      const enc = encodeURIComponent(jiraUrl);
+      return '<tr id="row-'+k.key+'">' 
         +'<td><span style="font-family:monospace;color:#c9a84c;">'+k.key+'</span>'
         +' <button class="copy" onclick="copyText(\''+k.key+'\')">Copy key</button></td>'
         +'<td>'+k.email+'</td>'
@@ -175,10 +195,21 @@ async function loadKeys() {
         +'<td>'+searchCell+'</td>'
         +'<td>'+badge+'</td>'
         +'<td>'+action+'</td>'
+        +'<td><button class="'+jiraBtnClass+'" onclick="toggleJira(\''+k.key+'\',\''+enc+'\')">'+jiraBtnLabel+'</button></td>'
+        +'</tr>'
+        +'<tr id="jira-row-'+k.key+'" class="jira-row" style="display:none;">'
+        +'<td colspan="8">'
+        +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">'
+        +'<span style="font-size:11px;color:#6b6660;white-space:nowrap;">Jira ticket URL:</span>'
+        +'<input class="jira-input" id="jira-input-'+k.key+'" type="url" placeholder="https://yourcompany.atlassian.net/browse/LEAD-123" value="'+jiraUrl+'" />'
+        +'<button class="btn-save-jira" onclick="saveJira(\''+k.key+'\')">Save</button>'
+        +(jiraUrl ? '<a class="jira-link" href="'+jiraUrl+'" target="_blank" rel="noopener">Open ↗</a>' : '')
+        +'</div>'
+        +'</td>'
         +'</tr>';
     }).join('');
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty" style="color:#f87171;">Error: '+e.message+'</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty" style="color:#f87171;">Error: '+e.message+'</td></tr>';
   }
 }
 
@@ -209,6 +240,34 @@ function copyText(text) {
 document.getElementById('secret-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') doLogin();
 });
+
+function toggleJira(key, encodedUrl) {
+  const row = document.getElementById('jira-row-' + key);
+  if (!row) return;
+  const isHidden = row.style.display === 'none';
+  row.style.display = isHidden ? 'table-row' : 'none';
+  if (isHidden) {
+    const input = document.getElementById('jira-input-' + key);
+    if (input && encodedUrl) input.value = decodeURIComponent(encodedUrl);
+    setTimeout(() => input && input.focus(), 50);
+  }
+}
+
+async function saveJira(key) {
+  const input = document.getElementById('jira-input-' + key);
+  if (!input) return;
+  const jiraUrl = input.value.trim();
+  try {
+    const result = await api('/admin/update-lead', 'POST', { key, jiraUrl });
+    if (result.ok) {
+      loadKeys();
+    } else {
+      alert('Save failed: ' + JSON.stringify(result));
+    }
+  } catch(e) {
+    alert('Error saving: ' + e.message);
+  }
+}
 </script>
 </body>
 </html>
