@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.12</title>
+<title>RentalComp Intelligence v5.13</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -251,7 +251,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
-      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.12</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.13</span>
     </div>
   </div>
 
@@ -269,6 +269,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.13 2026-04-21  PDF subject card price color: gold → red #c8522a to match Asking tile
+                     // Commit: consistent red for asking/subject price in PDF
    v5.12 2026-04-21  PDF: remove top 4 tiles (redundant with stats grid), restore asking=red
                      comp=blue color scheme on estimate tiles, labels darker, plain tile borders,
                      light footer with top rule
@@ -1091,7 +1093,7 @@ function generateReport() {
     .subject-block{background:#fff;border:1px solid #e5e0d8;border-left:4px solid #c5a050;border-radius:0 6px 6px 0;padding:16px 20px;margin-bottom:20px;}
     .s-addr{font-size:15px;font-weight:700;color:#0d1b2e;margin-bottom:4px;}
     .s-meta{font-size:11px;color:#6b6660;margin-bottom:10px;}
-    .s-price{font-size:26px;font-weight:700;color:#c5a050;font-family:'DM Mono',monospace;}
+    .s-price{font-size:26px;font-weight:700;color:#c8522a;font-family:'DM Mono',monospace;}
     .s-badge{display:inline-block;background:#dff2e8;color:#2a7a4a;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;margin-left:8px;vertical-align:middle;}
     .s-dom{font-size:11px;color:#6b6660;margin-top:4px;}
     /* ── Hero metrics — canonical: 11px grey label, 26px bold ── */
