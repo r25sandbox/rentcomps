@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.11</title>
+<title>RentalComp Intelligence v5.12</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -251,7 +251,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
-      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.11</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.12</span>
     </div>
   </div>
 
@@ -269,6 +269,9 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.12 2026-04-21  PDF refinements: labels darker (#6b6660), tiles plain border (gold reserved
+                     for subject card only), footer light bg with top rule (no navy bar)
+                     // Commit: PDF label contrast, reduce gold, light footer
    v5.11 2026-04-21  Canonical report template applied to PDF:
                      - Letterhead: gold '25' brand left, broker/phone/site grey, 3px navy rule
                      - Cards: 1px border + 4px gold left border, 6px radius
@@ -1092,13 +1095,13 @@ function generateReport() {
     .s-dom{font-size:11px;color:#6b6660;margin-top:4px;}
     /* ── Hero metrics — canonical: 11px grey label, 26px bold ── */
     .tiles{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:16px;}
-    .tile{background:#fff;border:1px solid #e5e0d8;border-left:4px solid #c5a050;border-radius:0 6px 6px 0;padding:10px 14px;}
-    .tile-lbl{font-size:11px;color:#9c9690;font-weight:400;margin-bottom:4px;}
-    .tile-val{font-size:26px;font-weight:700;font-family:'DM Mono',monospace;color:#c5a050;line-height:1;}
+    .tile{background:#fff;border:1px solid #e5e0d8;border-radius:6px;padding:10px 14px;}
+    .tile-lbl{font-size:11px;color:#6b6660;font-weight:500;margin-bottom:4px;}
+    .tile-val{font-size:26px;font-weight:700;font-family:'DM Mono',monospace;color:#0d1b2e;line-height:1;}
     .tile-val.secondary{color:#16a34a;}
     .estimate-tiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;}
-    .etile{background:#fff;border:1px solid #e5e0d8;border-left:4px solid #c5a050;border-radius:0 6px 6px 0;padding:10px 14px;}
-    .etile-lbl{font-size:11px;color:#9c9690;font-weight:400;margin-bottom:4px;}
+    .etile{background:#fff;border:1px solid #e5e0d8;border-radius:6px;padding:10px 14px;}
+    .etile-lbl{font-size:11px;color:#6b6660;font-weight:500;margin-bottom:4px;}
     /* ── Slider ── */
     .slider-wrap{background:#f9f8f5;border:1px solid #e5e0d8;border-radius:6px;padding:12px 16px;margin-bottom:20px;}
     .slider-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:10px;color:#9c9690;}
@@ -1109,7 +1112,7 @@ function generateReport() {
     .sg-cell{padding:9px 12px;border-bottom:1px solid #e5e0d8;}
     .sg-cell:nth-child(6n+4),.sg-cell:nth-child(6n+5),.sg-cell:nth-child(6n+6){background:#f8f8f8;}
     .sg-cell:nth-last-child(-n+3){border-bottom:none;}
-    .sg-lbl{font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#9c9690;font-weight:700;margin-bottom:2px;}
+    .sg-lbl{font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#6b6660;font-weight:700;margin-bottom:2px;}
     .sg-val{font-size:13px;font-weight:700;color:#1a1814;}
     /* ── Comp table ── */
     h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6b6660;margin:20px 0 8px;padding-bottom:4px;border-bottom:1px solid #e5e0d8;}
@@ -1119,8 +1122,9 @@ function generateReport() {
     tr:nth-child(even) td{background:#f8f8f8;}
     tr:last-child td{border-bottom:none;}
     /* ── Footer ── */
-    .footer{margin-top:32px;background:#0d1b2e;border-radius:6px;padding:14px 20px;font-size:9px;color:rgba(255,255,255,0.4);display:flex;justify-content:space-between;align-items:center;}
-    .footer a{color:rgba(201,168,76,0.7);text-decoration:none;}
+    .footer{margin-top:32px;padding-top:14px;border-top:1px solid #e5e0d8;font-size:9px;color:#9c9690;display:flex;justify-content:space-between;align-items:center;}
+    .footer a{color:#6b6660;text-decoration:none;}
+    .footer strong{color:#1a1814;}
   </style>
   </head><body>
   <div class="header">
@@ -1193,7 +1197,7 @@ function generateReport() {
   ${excl.length ? '<h2>Excluded comps (' + excl.length + ')</h2><table><thead><tr><th>Address</th><th>Bd/Ba</th><th>Sqft</th><th>Rent</th><th>$/sqft</th><th>DOM</th><th>Status</th><th>Distance</th></tr></thead><tbody>' + exclRows + '</tbody></table>' : ''}
 
   <div class="footer">
-    <span><strong style="color:rgba(255,255,255,0.65);">Realty 25 AZ</strong> &nbsp;·&nbsp; Alik Levin, Broker &nbsp;·&nbsp; 480.920.2273 &nbsp;·&nbsp; <a href="https://realty25az.com">realty25az.com</a> &nbsp;·&nbsp; <a href="mailto:alik@realty25az.com">alik@realty25az.com</a></span>
+    <span><strong>Realty 25 AZ</strong> &nbsp;·&nbsp; Alik Levin, Broker &nbsp;·&nbsp; 480.920.2273 &nbsp;·&nbsp; <a href="https://realty25az.com">realty25az.com</a> &nbsp;·&nbsp; <a href="mailto:alik@realty25az.com">alik@realty25az.com</a></span>
     <span>Data: Rentcast &nbsp;·&nbsp; Prices may have changed &nbsp;·&nbsp; Verify on Zillow</span>
   </div>
   </body></html>`;
