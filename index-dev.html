@@ -269,9 +269,10 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v5.12 2026-04-21  PDF refinements: labels darker (#6b6660), tiles plain border (gold reserved
-                     for subject card only), footer light bg with top rule (no navy bar)
-                     // Commit: PDF label contrast, reduce gold, light footer
+   v5.12 2026-04-21  PDF: remove top 4 tiles (redundant with stats grid), restore asking=red
+                     comp=blue color scheme on estimate tiles, labels darker, plain tile borders,
+                     light footer with top rule
+                     // Commit: PDF tile cleanup, restore red/blue estimate colors, light footer
    v5.11 2026-04-21  Canonical report template applied to PDF:
                      - Letterhead: gold '25' brand left, broker/phone/site grey, 3px navy rule
                      - Cards: 1px border + 4px gold left border, 6px radius
@@ -1094,11 +1095,6 @@ function generateReport() {
     .s-badge{display:inline-block;background:#dff2e8;color:#2a7a4a;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;margin-left:8px;vertical-align:middle;}
     .s-dom{font-size:11px;color:#6b6660;margin-top:4px;}
     /* ── Hero metrics — canonical: 11px grey label, 26px bold ── */
-    .tiles{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:16px;}
-    .tile{background:#fff;border:1px solid #e5e0d8;border-radius:6px;padding:10px 14px;}
-    .tile-lbl{font-size:11px;color:#6b6660;font-weight:500;margin-bottom:4px;}
-    .tile-val{font-size:26px;font-weight:700;font-family:'DM Mono',monospace;color:#0d1b2e;line-height:1;}
-    .tile-val.secondary{color:#16a34a;}
     .estimate-tiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;}
     .etile{background:#fff;border:1px solid #e5e0d8;border-radius:6px;padding:10px 14px;}
     .etile-lbl{font-size:11px;color:#6b6660;font-weight:500;margin-bottom:4px;}
@@ -1156,16 +1152,11 @@ function generateReport() {
     <div class="s-dom">${currentSubject.dom?currentSubject.dom+' DOM · ':''}Rentcast est: $${currentSubject.rent.toLocaleString()} · Range: $${currentSubject.rentRangeLow.toLocaleString()}–$${currentSubject.rentRangeHigh.toLocaleString()}</div>
   </div>
 
-  <div class="tiles">
-    <div class="tile"><div class="tile-lbl">Comps included</div><div class="tile-val">${included.length}</div></div>
-    <div class="tile"><div class="tile-lbl">Median rent</div><div class="tile-val">$${median.toLocaleString()}</div></div>
-    <div class="tile"><div class="tile-lbl">Avg $/sqft</div><div class="tile-val">$${avgPpsf.toFixed(2)}</div></div>
-    <div class="tile"><div class="tile-lbl">vs. Comp Est.</div><div class="tile-val ${gap<=0?'secondary':''}" style="${gap>0?'color:#dc2626':''}">$${Math.abs(gap).toLocaleString()}<span style="font-size:13px;font-weight:400;"> ${gap>0?'over':'under'}</span></div></div>
-  </div>
+
 
   <div class="estimate-tiles">
-    <div class="etile"><div class="etile-lbl">Asking price</div><div style="font-size:26px;font-weight:700;font-family:'DM Mono',monospace;color:#c5a050;">$${subjectPrice.toLocaleString()}</div></div>
-    <div class="etile"><div class="etile-lbl">Comp estimate</div><div style="font-size:26px;font-weight:700;font-family:'DM Mono',monospace;color:${gap>0?'#dc2626':'#16a34a'};">$${compEstimate.toLocaleString()}</div></div>
+    <div class="etile"><div class="etile-lbl">Asking price</div><div style="font-size:26px;font-weight:700;font-family:'DM Mono',monospace;color:#c8522a;">$${subjectPrice.toLocaleString()}</div></div>
+    <div class="etile"><div class="etile-lbl">Comp estimate</div><div style="font-size:26px;font-weight:700;font-family:'DM Mono',monospace;color:#1a4f8c;">$${compEstimate.toLocaleString()}</div></div>
     <div class="etile"><div class="etile-lbl">Rentcast estimate</div><div style="font-size:26px;font-weight:700;font-family:'DM Mono',monospace;color:#6b6660;">$${currentSubject.rent.toLocaleString()}</div></div>
   </div>
 
