@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.13</title>
+<title>RentalComp Intelligence v5.14</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -251,7 +251,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
-      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.13</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.14</span>
     </div>
   </div>
 
@@ -269,6 +269,8 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.14 2026-04-21  PDF header: remove gold '25' brand mark, start directly with brand name
+                     // Commit: remove redundant 25 brand mark from PDF header
    v5.13 2026-04-21  PDF subject card price color: gold → red #c8522a to match Asking tile
                      // Commit: consistent red for asking/subject price in PDF
    v5.12 2026-04-21  PDF: remove top 4 tiles (redundant with stats grid), restore asking=red
@@ -1080,8 +1082,6 @@ function generateReport() {
     @media print{body{padding:16px;}@page{margin:16mm;}}
     /* ── Canonical letterhead ── */
     .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0;padding-bottom:14px;}
-    .brand-mark{display:flex;align-items:baseline;gap:10px;}
-    .brand-25{font-size:36px;font-weight:700;color:#c5a050;letter-spacing:-0.02em;line-height:1;}
     .brand-name{font-size:13px;font-weight:600;color:#1a1814;letter-spacing:0.01em;}
     .brand-tagline{font-size:9px;color:#9c9690;margin-top:1px;}
     .header-right{text-align:right;}
@@ -1126,12 +1126,9 @@ function generateReport() {
   </style>
   </head><body>
   <div class="header">
-    <div class="brand-mark">
-      <div class="brand-25">25</div>
-      <div>
-        <div class="brand-name">Realty 25 AZ &nbsp;·&nbsp; RentalComp Intelligence</div>
-        <div class="brand-tagline">Alik Levin, Designated Broker &nbsp;·&nbsp; 480.920.2273 &nbsp;·&nbsp; realty25az.com</div>
-      </div>
+    <div>
+      <div class="brand-name">Realty 25 AZ &nbsp;·&nbsp; RentalComp Intelligence</div>
+      <div class="brand-tagline">Alik Levin, Designated Broker &nbsp;·&nbsp; 480.920.2273 &nbsp;·&nbsp; realty25az.com</div>
     </div>
     <div class="header-right">
       <div class="report-title">Rental Comp Report</div>
