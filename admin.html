@@ -3,10 +3,9 @@
 <head>
 <!--
   RentalComp Admin — admin.html
-  v2.2  2026-04-15  Jira lead link per key row: toggle expand, inline URL input,
-                    Save writes jiraUrl to KV via /admin/update-lead,
-                    button turns blue when link exists, Open ↗ link shown when set
-                    // Commit: add Jira lead tracking to access keys table
+  v2.3  2026-04-23  DEV/PROD env banner + one-click env switcher; Name column in requests;
+                    Delete bogus request button; Jira lead tracking
+                    // Commit: env banner, switcher, name column, delete request, Jira
   v2.1  2026-04-08  Copy key (not link), prompt shows key not URL, re-approve on revoked keys
                     // Commit: copy key not GitHub URL, re-approve tier buttons on revoked keys
   v2.0  2026-04-08  Tier preset buttons (Trial/Consultation/Investor), tier name in keys table
@@ -50,6 +49,13 @@
   .err{color:#f87171;font-size:12px;margin-top:8px;}
   .searches{font-size:10px;color:#6b6660;}
   .days-input{width:60px;display:inline-block;padding:4px 8px;margin:0 6px;}
+  .env-banner{padding:8px 20px;font-size:12px;font-weight:700;text-align:center;letter-spacing:0.08em;text-transform:uppercase;}
+  .env-banner.prod{background:#14532d;color:#86efac;}
+  .env-banner.dev{background:#78350f;color:#fcd34d;}
+  .btn-switch{font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid currentColor;background:transparent;cursor:pointer;margin-left:12px;font-weight:600;color:inherit;opacity:0.8;}
+  .btn-switch:hover{opacity:1;}
+  .btn-delete{background:#7f1d1d;color:#fca5a5;border:1px solid #991b1b;font-size:10px;padding:2px 8px;border-radius:5px;cursor:pointer;}
+  .btn-delete:hover{background:#991b1b;color:#fff;}
   .btn-jira{background:#2a3a50;color:#c9a84c;border:1px solid #c9a84c;font-size:10px;padding:3px 8px;border-radius:6px;cursor:pointer;}
   .btn-jira:hover{background:#c9a84c;color:#0d1b2e;}
   .btn-jira.has-link{background:#1e3a5f;border-color:#60a5fa;color:#60a5fa;}
@@ -77,15 +83,16 @@
 </div>
 
 <div id="main-screen" style="display:none;max-width:960px;margin:0 auto;">
-  <h1>RentalComp<span style="color:#fff;"> Intelligence</span></h1>
+  <div id="env-banner" class="env-banner"></div>
+  <h1 style="margin-top:16px;">RentalComp<span style="color:#fff;"> Intelligence</span></h1>
   <div class="sub">Admin Panel · <span id="worker-label"></span></div>
 
   <!-- Pending Requests -->
   <div class="section">
     <div class="section-title">Access Requests <button class="btn-gold" style="float:right;font-size:11px;padding:4px 12px;" onclick="loadAll()">↺ Refresh</button></div>
     <table>
-      <thead><tr><th>Email</th><th>Requested</th><th>Status</th><th>Days</th><th>Action</th></tr></thead>
-      <tbody id="requests-body"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+      <thead><tr><th>Name</th><th>Email</th><th>Requested</th><th>Status</th><th>Days</th><th>Action</th><th>Lead</th></tr></thead>
+      <tbody id="requests-body"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
     </table>
   </div>
 
@@ -93,8 +100,8 @@
   <div class="section">
     <div class="section-title">Access Keys</div>
     <table>
-      <thead><tr><th>Key</th><th>Email</th><th>Created</th><th>Expires</th><th>Searches</th><th>Status</th><th>Action</th><th>Lead</th></tr></thead>
-      <tbody id="keys-body"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+      <thead><tr><th>Key</th><th>Email</th><th>Created</th><th>Expires</th><th>Searches</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody id="keys-body"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -102,6 +109,8 @@
 <script>
 let WORKER = '';
 let SECRET = '';
+const PROD_WORKER = 'https://rentalcomp-proxy.alik-levin.workers.dev';
+const DEV_WORKER  = 'https://rentalcomp-proxy-dev.alik-levin.workers.dev';
 
 function doLogin() {
   SECRET = document.getElementById('secret-input').value.trim();
@@ -110,6 +119,7 @@ function doLogin() {
   document.getElementById('worker-label').textContent = WORKER;
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('main-screen').style.display = 'block';
+  updateEnvBanner();
   loadAll();
 }
 
@@ -127,12 +137,12 @@ async function loadAll() {
 
 async function loadRequests() {
   const tbody = document.getElementById('requests-body');
-  tbody.innerHTML = '<tr><td colspan="5" class="empty">Loading…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="6" class="empty">Loading…</td></tr>';
   try {
     const data = await api('/admin/requests');
     console.log('requests response:', data);
-    if (data.error) { tbody.innerHTML = '<tr><td colspan="5" class="empty" style="color:#f87171;">API error: '+data.error+'</td></tr>'; return; }
-    if (!Array.isArray(data) || !data.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No requests yet.</td></tr>'; return; }
+    if (data.error) { tbody.innerHTML = '<tr><td colspan="6" class="empty" style="color:#f87171;">API error: '+data.error+'</td></tr>'; return; }
+    if (!Array.isArray(data) || !data.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">No requests yet.</td></tr>'; return; }
     tbody.innerHTML = data.map(r => {
       const date = new Date(r.requestedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
       const badge = r.status === 'approved'
@@ -145,10 +155,15 @@ async function loadRequests() {
           + '<button class="btn-green" onclick="approveTier(\''+r.email+'\',25,90)" style="font-size:10px;padding:3px 8px;">Investor<br><span style="font-weight:400;opacity:0.7;">25 · 90d · $99</span></button>'
           + '</div>'
         : '<span style="color:#6b6660;font-size:11px;">Key: '+(r.key||'—')+'</span>';
-      return '<tr><td>'+r.email+'</td><td>'+date+'</td><td>'+badge+'</td><td></td><td>'+action+'</td></tr>';
+      const nameStr = [r.firstName, r.lastName].filter(Boolean).join(' ') || '<span style="color:#6b6660;font-style:italic;">—</span>';
+      const safeEmail = r.email.replace(/'/g, "\\'");
+      const deleteBtn = r.status === 'pending'
+        ? ' <button class="btn-delete" onclick="deleteRequest(\''+safeEmail+'\')">✕ Del</button>'
+        : '';
+      return '<tr><td>'+nameStr+'</td><td>'+r.email+'</td><td>'+date+'</td><td>'+badge+'</td><td></td><td>'+action+deleteBtn+'</td></tr>';
     }).join('');
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty" style="color:#f87171;">Error: '+e.message+'</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="empty" style="color:#f87171;">Error: '+e.message+'</td></tr>';
     console.error('loadRequests error:', e);
   }
 }
@@ -213,6 +228,28 @@ async function loadKeys() {
   }
 }
 
+function toggleJira(key, encodedUrl) {
+  const row = document.getElementById('jira-row-' + key);
+  if (!row) return;
+  const isHidden = row.style.display === 'none';
+  row.style.display = isHidden ? 'table-row' : 'none';
+  if (isHidden) {
+    const input = document.getElementById('jira-input-' + key);
+    if (input && encodedUrl) input.value = decodeURIComponent(encodedUrl);
+    setTimeout(() => input && input.focus(), 50);
+  }
+}
+
+async function saveJira(key) {
+  const input = document.getElementById('jira-input-' + key);
+  if (!input) return;
+  const jiraUrl = input.value.trim();
+  try {
+    const result = await api('/admin/update-lead', 'POST', { key, jiraUrl });
+    if (result.ok) { loadKeys(); } else { alert('Save failed: ' + JSON.stringify(result)); }
+  } catch(e) { alert('Error saving: ' + e.message); }
+}
+
 async function approveTier(email, addressLimit, days) {
   try {
     const result = await api('/admin/approve', 'POST', { email, days, addressLimit });
@@ -241,32 +278,31 @@ document.getElementById('secret-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') doLogin();
 });
 
-function toggleJira(key, encodedUrl) {
-  const row = document.getElementById('jira-row-' + key);
-  if (!row) return;
-  const isHidden = row.style.display === 'none';
-  row.style.display = isHidden ? 'table-row' : 'none';
-  if (isHidden) {
-    const input = document.getElementById('jira-input-' + key);
-    if (input && encodedUrl) input.value = decodeURIComponent(encodedUrl);
-    setTimeout(() => input && input.focus(), 50);
-  }
+function updateEnvBanner() {
+  const banner = document.getElementById('env-banner');
+  if (!banner) return;
+  const isDev = WORKER.includes('-dev');
+  banner.className = 'env-banner ' + (isDev ? 'dev' : 'prod');
+  banner.innerHTML = (isDev ? '⚠️ DEV ENVIRONMENT' : '✓ PRODUCTION')
+    + ' <button class="btn-switch" onclick="switchEnv()">'
+    + (isDev ? 'Switch to PROD' : 'Switch to DEV') + '</button>';
 }
 
-async function saveJira(key) {
-  const input = document.getElementById('jira-input-' + key);
-  if (!input) return;
-  const jiraUrl = input.value.trim();
+function switchEnv() {
+  const isDev = WORKER.includes('-dev');
+  WORKER = isDev ? PROD_WORKER : DEV_WORKER;
+  document.getElementById('worker-label').textContent = WORKER;
+  updateEnvBanner();
+  loadAll();
+}
+
+async function deleteRequest(email) {
+  if (!confirm('Delete request from ' + email + '?\nThis permanently removes it from KV.')) return;
   try {
-    const result = await api('/admin/update-lead', 'POST', { key, jiraUrl });
-    if (result.ok) {
-      loadKeys();
-    } else {
-      alert('Save failed: ' + JSON.stringify(result));
-    }
-  } catch(e) {
-    alert('Error saving: ' + e.message);
-  }
+    const result = await api('/admin/delete-request', 'POST', { email });
+    if (result.ok) { loadRequests(); }
+    else { alert('Delete failed: ' + JSON.stringify(result)); }
+  } catch(e) { alert('Error: ' + e.message); }
 }
 </script>
 </body>
