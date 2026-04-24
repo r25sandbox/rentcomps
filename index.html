@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.14</title>
+<title>RentalComp Intelligence v5.10</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -188,8 +188,12 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
     <div class="gate-tagline">Intelligence</div>
     <div id="gate-content">
       <div class="gate-title">Request Access</div>
-      <div class="gate-sub">Enter your email and we'll reach out with your access link.</div>
-      <input class="gate-input" type="email" id="gate-email" placeholder="your@email.com" />
+      <div class="gate-sub">Enter your details and we'll reach out with your access link.</div>
+      <div style="display:flex;gap:8px;">
+        <input class="gate-input" type="text" id="gate-first" placeholder="First name" style="margin-bottom:0;" />
+        <input class="gate-input" type="text" id="gate-last" placeholder="Last name" style="margin-bottom:0;" />
+      </div>
+      <input class="gate-input" type="email" id="gate-email" placeholder="your@email.com" style="margin-top:10px;" />
       <button class="gate-btn" onclick="requestAccess()">Request Access</button>
       <div class="gate-msg" id="gate-msg"></div>
     </div>
@@ -251,7 +255,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
-      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.14</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.10</span>
     </div>
   </div>
 
@@ -269,22 +273,6 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
-   v5.14 2026-04-21  PDF header: remove gold '25' brand mark, start directly with brand name
-                     // Commit: remove redundant 25 brand mark from PDF header
-   v5.13 2026-04-21  PDF subject card price color: gold → red #c8522a to match Asking tile
-                     // Commit: consistent red for asking/subject price in PDF
-   v5.12 2026-04-21  PDF: remove top 4 tiles (redundant with stats grid), restore asking=red
-                     comp=blue color scheme on estimate tiles, labels darker, plain tile borders,
-                     light footer with top rule
-                     // Commit: PDF tile cleanup, restore red/blue estimate colors, light footer
-   v5.11 2026-04-21  Canonical report template applied to PDF:
-                     - Letterhead: gold '25' brand left, broker/phone/site grey, 3px navy rule
-                     - Cards: 1px border + 4px gold left border, 6px radius
-                     - Hero metrics: 11px grey label + 26px bold, gold primary, green/red secondary
-                     - Stats grid: 3-col alternating #f8f8f8 above comp table
-                     - Footer: phone number added
-                     - Delivery: no auto-print (open in new tab, user prints at will)
-                     // Commit: canonical report template - letterhead, cards, hero, stats grid
    v5.10 2026-04-11  Drop pool indicator (not reliably in Rentcast features object — confirmed via DevTools)
                      HOA: show 'not in Rentcast data' when absent so absence is explicit not silent
                      HOA extraction simplified: hoa.fee with hoaFee fallback, no pool logic
@@ -436,14 +424,18 @@ function showExpired(email) {
 }
 
 async function requestAccess() {
+  const firstName = (document.getElementById('gate-first')?.value||'').trim();
+  const lastName = (document.getElementById('gate-last')?.value||'').trim();
   const email = document.getElementById('gate-email').value.trim();
   const msg = document.getElementById('gate-msg');
+  if (!firstName) { msg.style.color='#f87171'; msg.textContent='Please enter your first name.'; return; }
+  if (!lastName) { msg.style.color='#f87171'; msg.textContent='Please enter your last name.'; return; }
   if (!email || !email.includes('@')) { msg.style.color='#f87171'; msg.textContent='Please enter a valid email.'; return; }
   msg.style.color='#c9a84c'; msg.textContent='Sending request…';
   try {
     const res = await fetch(WORKER_URL + '/request-access', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ email })
+      body: JSON.stringify({ firstName, lastName, email })
     });
     const data = await res.json();
     if (data.status === 'requested') {
@@ -1076,66 +1068,58 @@ function generateReport() {
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
   <title>RentalComp Report — ${currentSubject.address}</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:'DM Sans',sans-serif;color:#1a1814;background:#fff;padding:32px;max-width:900px;margin:0 auto;}
     @media print{body{padding:16px;}@page{margin:16mm;}}
-    /* ── Canonical letterhead ── */
-    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0;padding-bottom:14px;}
-    .brand-name{font-size:13px;font-weight:600;color:#1a1814;letter-spacing:0.01em;}
-    .brand-tagline{font-size:9px;color:#9c9690;margin-top:1px;}
+    .header{background:#0d1b2e;border-radius:10px;padding:20px 24px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;}
+    .brand{font-size:24px;font-weight:700;color:#ffffff;letter-spacing:-0.01em;} .brand span{color:#c9a84c;}
+    .brand-sub{font-size:10px;color:rgba(201,168,76,0.7);text-transform:uppercase;letter-spacing:0.12em;margin-top:2px;}
     .header-right{text-align:right;}
-    .report-title{font-size:13px;font-weight:700;color:#1a1814;margin-bottom:2px;}
-    .header-meta{font-size:10px;color:#9c9690;line-height:1.7;}
-    .header-meta a{color:#9c9690;text-decoration:none;}
-    .header-rule{height:3px;background:#0d1b2e;border-radius:2px;margin-bottom:24px;}
-    /* ── Subject card — canonical: 1px border + 4px gold left, 6px radius ── */
-    .subject-block{background:#fff;border:1px solid #e5e0d8;border-left:4px solid #c5a050;border-radius:0 6px 6px 0;padding:16px 20px;margin-bottom:20px;}
+    .header-broker{font-size:13px;font-weight:600;color:#c9a84c;margin-bottom:2px;}
+    .header-contact{font-size:10px;color:rgba(255,255,255,0.55);line-height:1.6;}
+    .header-contact a{color:rgba(201,168,76,0.8);text-decoration:none;}
+    .date{font-size:9px;color:rgba(255,255,255,0.35);margin-top:6px;text-align:right;}
+    .subject-block{background:#f4f2ec;border-left:4px solid #0d1b2e;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:20px;}
     .s-addr{font-size:15px;font-weight:700;color:#0d1b2e;margin-bottom:4px;}
     .s-meta{font-size:11px;color:#6b6660;margin-bottom:10px;}
     .s-price{font-size:26px;font-weight:700;color:#c8522a;font-family:'DM Mono',monospace;}
     .s-badge{display:inline-block;background:#dff2e8;color:#2a7a4a;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;margin-left:8px;vertical-align:middle;}
     .s-dom{font-size:11px;color:#6b6660;margin-top:4px;}
-    /* ── Hero metrics — canonical: 11px grey label, 26px bold ── */
+    .tiles{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:16px;}
+    .tile{background:#f9f8f5;border:1px solid #e5e0d8;border-radius:8px;padding:10px;text-align:center;}
+    .tile-lbl{font-size:8px;text-transform:uppercase;letter-spacing:0.08em;color:#9c9690;font-weight:700;margin-bottom:4px;}
+    .tile-val{font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:#1a1814;}
     .estimate-tiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;}
-    .etile{background:#fff;border:1px solid #e5e0d8;border-radius:6px;padding:10px 14px;}
-    .etile-lbl{font-size:11px;color:#6b6660;font-weight:500;margin-bottom:4px;}
-    /* ── Slider ── */
-    .slider-wrap{background:#f9f8f5;border:1px solid #e5e0d8;border-radius:6px;padding:12px 16px;margin-bottom:20px;}
+    .etile{background:#f9f8f5;border:1px solid #e5e0d8;border-radius:8px;padding:10px;text-align:center;}
+    .etile-lbl{font-size:8px;text-transform:uppercase;letter-spacing:0.08em;color:#9c9690;font-weight:700;margin-bottom:4px;}
+    .slider-wrap{background:#f9f8f5;border:1px solid #e5e0d8;border-radius:8px;padding:12px 16px;margin-bottom:20px;}
     .slider-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:10px;color:#9c9690;}
     .slider-labels{display:flex;justify-content:space-between;margin-top:6px;font-size:9px;color:#9c9690;}
     .delta{font-size:12px;font-weight:700;font-family:'DM Mono',monospace;color:${gapColor};}
-    /* ── Stats grid — canonical: 3-col alternating #f8f8f8 ── */
-    .stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-bottom:20px;border:1px solid #e5e0d8;border-radius:6px;overflow:hidden;}
-    .sg-cell{padding:9px 12px;border-bottom:1px solid #e5e0d8;}
-    .sg-cell:nth-child(6n+4),.sg-cell:nth-child(6n+5),.sg-cell:nth-child(6n+6){background:#f8f8f8;}
-    .sg-cell:nth-last-child(-n+3){border-bottom:none;}
-    .sg-lbl{font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#6b6660;font-weight:700;margin-bottom:2px;}
-    .sg-val{font-size:13px;font-weight:700;color:#1a1814;}
-    /* ── Comp table ── */
     h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6b6660;margin:20px 0 8px;padding-bottom:4px;border-bottom:1px solid #e5e0d8;}
     table{width:100%;border-collapse:collapse;font-size:11px;}
-    th{background:#f8f8f8;text-align:left;padding:7px 10px;font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#6b6660;font-weight:700;border-bottom:2px solid #e5e0d8;}
+    th{background:#f4f2ec;text-align:left;padding:7px 10px;font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#6b6660;font-weight:700;border-bottom:2px solid #e5e0d8;}
     td{padding:7px 10px;border-bottom:1px solid #f0ede6;color:#1a1814;}
-    tr:nth-child(even) td{background:#f8f8f8;}
+    tr:nth-child(even) td{background:#faf9f7;}
     tr:last-child td{border-bottom:none;}
-    /* ── Footer ── */
-    .footer{margin-top:32px;padding-top:14px;border-top:1px solid #e5e0d8;font-size:9px;color:#9c9690;display:flex;justify-content:space-between;align-items:center;}
-    .footer a{color:#6b6660;text-decoration:none;}
-    .footer strong{color:#1a1814;}
+    .footer{margin-top:32px;background:#0d1b2e;border-radius:8px;padding:14px 20px;font-size:9px;color:rgba(255,255,255,0.4);display:flex;justify-content:space-between;align-items:center;} .footer a{color:rgba(201,168,76,0.7);text-decoration:none;}
   </style>
   </head><body>
   <div class="header">
     <div>
-      <div class="brand-name">Realty 25 AZ &nbsp;·&nbsp; RentalComp Intelligence</div>
-      <div class="brand-tagline">Alik Levin, Designated Broker &nbsp;·&nbsp; 480.920.2273 &nbsp;·&nbsp; realty25az.com</div>
+      <div class="brand">Rental<span>Comp</span> Intelligence</div>
+      <div class="brand-sub">Realty 25 AZ</div>
     </div>
     <div class="header-right">
-      <div class="report-title">Rental Comp Report</div>
-      <div class="header-meta">${date}</div>
+      <div class="header-broker">Alik Levin, Broker</div>
+      <div class="header-contact">
+        <a href="https://realty25az.com">realty25az.com</a> &nbsp;·&nbsp;
+        <a href="mailto:alik@realty25az.com">alik@realty25az.com</a>
+      </div>
+      <div class="date">Report generated ${date}</div>
     </div>
   </div>
-  <div class="header-rule"></div>
 
   <div class="subject-block">
     <div class="s-addr"><a href="https://www.zillow.com/homes/for_rent/${encodeURIComponent(currentSubject.address)}_rb/" target="_blank" style="color:#0d1b2e;text-decoration:none;">${currentSubject.address} ↗</a></div>
@@ -1151,12 +1135,17 @@ function generateReport() {
     <div class="s-dom">${currentSubject.dom?currentSubject.dom+' DOM · ':''}Rentcast est: $${currentSubject.rent.toLocaleString()} · Range: $${currentSubject.rentRangeLow.toLocaleString()}–$${currentSubject.rentRangeHigh.toLocaleString()}</div>
   </div>
 
-
+  <div class="tiles">
+    <div class="tile"><div class="tile-lbl">In view</div><div class="tile-val">${included.length}</div></div>
+    <div class="tile"><div class="tile-lbl">Median rent</div><div class="tile-val">$${median.toLocaleString()}</div></div>
+    <div class="tile"><div class="tile-lbl">Range</div><div class="tile-val" style="font-size:13px;">$${minRent.toLocaleString()}–$${maxRent.toLocaleString()}</div></div>
+    <div class="tile"><div class="tile-lbl">Avg $/sqft</div><div class="tile-val">$${avgPpsf.toFixed(2)}</div></div>
+  </div>
 
   <div class="estimate-tiles">
-    <div class="etile"><div class="etile-lbl">Asking price</div><div style="font-size:26px;font-weight:700;font-family:'DM Mono',monospace;color:#c8522a;">$${subjectPrice.toLocaleString()}</div></div>
-    <div class="etile"><div class="etile-lbl">Comp estimate</div><div style="font-size:26px;font-weight:700;font-family:'DM Mono',monospace;color:#1a4f8c;">$${compEstimate.toLocaleString()}</div></div>
-    <div class="etile"><div class="etile-lbl">Rentcast estimate</div><div style="font-size:26px;font-weight:700;font-family:'DM Mono',monospace;color:#6b6660;">$${currentSubject.rent.toLocaleString()}</div></div>
+    <div class="etile"><div class="etile-lbl">Asking</div><div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:#c8522a;">$${subjectPrice.toLocaleString()}</div></div>
+    <div class="etile"><div class="etile-lbl">Comp est.</div><div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:#1a4f8c;">$${compEstimate.toLocaleString()}</div></div>
+    <div class="etile"><div class="etile-lbl">Rentcast</div><div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:#6b6660;">$${currentSubject.rent.toLocaleString()}</div></div>
   </div>
 
   <div class="slider-wrap">
@@ -1169,15 +1158,6 @@ function generateReport() {
     <div class="slider-labels"><span>$${minRent.toLocaleString()}</span><span>$${maxRent.toLocaleString()}</span></div>
   </div>
 
-  <div class="stats-grid">
-    <div class="sg-cell"><div class="sg-lbl">Rent low</div><div class="sg-val">$${minRent.toLocaleString()}</div></div>
-    <div class="sg-cell"><div class="sg-lbl">Rent median</div><div class="sg-val">$${median.toLocaleString()}</div></div>
-    <div class="sg-cell"><div class="sg-lbl">Rent high</div><div class="sg-val">$${maxRent.toLocaleString()}</div></div>
-    <div class="sg-cell"><div class="sg-lbl">Comps included</div><div class="sg-val">${included.length}</div></div>
-    <div class="sg-cell"><div class="sg-lbl">Comps excluded</div><div class="sg-val">${excl.length}</div></div>
-    <div class="sg-cell"><div class="sg-lbl">Avg $/sqft</div><div class="sg-val">$${avgPpsf.toFixed(2)}</div></div>
-  </div>
-
   <h2>Included comps (${included.length})</h2>
   <table>
     <thead><tr><th>Address</th><th>Bd/Ba</th><th>Sqft</th><th>Rent</th><th>$/sqft</th><th>DOM</th><th>Status</th><th>Distance</th></tr></thead>
@@ -1187,16 +1167,18 @@ function generateReport() {
   ${excl.length ? '<h2>Excluded comps (' + excl.length + ')</h2><table><thead><tr><th>Address</th><th>Bd/Ba</th><th>Sqft</th><th>Rent</th><th>$/sqft</th><th>DOM</th><th>Status</th><th>Distance</th></tr></thead><tbody>' + exclRows + '</tbody></table>' : ''}
 
   <div class="footer">
-    <span><strong>Realty 25 AZ</strong> &nbsp;·&nbsp; Alik Levin, Broker &nbsp;·&nbsp; 480.920.2273 &nbsp;·&nbsp; <a href="https://realty25az.com">realty25az.com</a> &nbsp;·&nbsp; <a href="mailto:alik@realty25az.com">alik@realty25az.com</a></span>
+    <span>RentalComp Intelligence &nbsp;·&nbsp; <strong style="color:rgba(255,255,255,0.65);">Realty 25 AZ</strong> &nbsp;·&nbsp; Alik Levin, Broker &nbsp;·&nbsp; <a href="https://realty25az.com">realty25az.com</a> &nbsp;·&nbsp; <a href="mailto:alik@realty25az.com">alik@realty25az.com</a></span>
     <span>Data: Rentcast &nbsp;·&nbsp; Prices may have changed &nbsp;·&nbsp; Verify on Zillow</span>
   </div>
   </body></html>`;
 
-  // Blob URL — no auto-print per canonical template spec
+  // Blob URL — works on mobile (window.open+document.write is blocked as popup)
   const blob = new Blob([html], {type:'text/html'});
   const blobUrl = URL.createObjectURL(blob);
   const newWin = window.open(blobUrl, '_blank');
-  if(!newWin) {
+  if(newWin) {
+    newWin.addEventListener('load', ()=>{ newWin.print(); });
+  } else {
     // Popup blocked — force download
     const a = document.createElement('a');
     a.href = blobUrl; a.download = 'RentalComp-Report.html';
