@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.10</title>
+<title>RentalComp Intelligence v5.16</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -177,6 +177,50 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 .gate-msg { font-size: 12px; margin-top: 10px; min-height: 18px; }
 .gate-footer { font-size: 11px; color: #6b6660; margin-top: 20px; line-height: 1.6; }
 .gate-footer a { color: var(--gold); text-decoration: none; }
+
+/* ── What-is-this trigger ── */
+.what-trigger { color: rgba(201,168,76,0.7); font-size: 11px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; transition: color 0.15s; user-select: none; }
+.what-trigger:hover { color: var(--gold); }
+.what-trigger .info-icon { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; border: 1px solid currentColor; font-size: 9px; font-weight: 700; font-style: italic; font-family: serif; }
+
+/* ── Explainer modal ── */
+.explainer { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 10000; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
+.explainer.visible { display: flex; }
+.explainer-card {
+  background: #fff; border-radius: 14px; max-width: 520px; width: 100%;
+  max-height: calc(100vh - 40px); overflow-y: auto; position: relative;
+  box-shadow: 0 12px 60px rgba(0,0,0,0.4);
+}
+@media (max-width: 600px) {
+  .explainer { padding: 0; align-items: stretch; }
+  .explainer-card { max-width: 100%; max-height: 100vh; border-radius: 0; }
+}
+.exp-close { position: absolute; top: 12px; right: 14px; width: 30px; height: 30px; border-radius: 50%; border: none; background: rgba(0,0,0,0.05); color: #6b6660; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; z-index: 2; }
+.exp-close:hover { background: rgba(0,0,0,0.12); color: var(--text); }
+.exp-hero { background: var(--navy); color: #fff; padding: 24px 28px 20px; }
+.exp-hero h2 { font-size: 22px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.01em; }
+.exp-hero h2 span { color: var(--gold); }
+.exp-hero .exp-tagline { font-size: 11px; color: rgba(201,168,76,0.6); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 16px; }
+.exp-pitch { font-size: 15px; line-height: 1.5; color: #e5e0d8; font-weight: 500; }
+.exp-pitch strong { color: var(--gold); }
+.exp-body { padding: 22px 28px 0; color: var(--text); }
+.exp-section { margin-bottom: 22px; }
+.exp-section h3 { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text2); margin-bottom: 10px; }
+.exp-why { font-size: 13.5px; line-height: 1.65; color: var(--text); }
+.exp-why .kicker { display: inline-block; font-weight: 700; color: var(--navy); margin-top: 6px; }
+.exp-why em { font-style: normal; background: linear-gradient(transparent 60%, rgba(201,168,76,0.3) 60%); padding: 0 2px; }
+.exp-steps { list-style: none; counter-reset: step; padding: 0; margin: 0; }
+.exp-steps li { counter-increment: step; display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #f0ede6; font-size: 13px; line-height: 1.5; color: var(--text); }
+.exp-steps li:last-child { border-bottom: none; }
+.exp-steps li::before { content: counter(step); flex-shrink: 0; width: 24px; height: 24px; background: var(--navy); color: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; font-family: var(--mono); }
+.exp-bonus { font-size: 12px; color: var(--text2); font-style: italic; padding: 12px 0 0; border-top: none; }
+.exp-bonus strong { color: var(--navy); font-style: normal; }
+.exp-sample { background: #f8f8f8; border: 1px solid #e5e0d8; border-radius: 8px; padding: 14px; }
+.exp-cta { padding: 16px 28px 24px; border-top: 1px solid #f0ede6; display: flex; gap: 10px; }
+.exp-btn-primary { flex: 1; padding: 11px; background: var(--gold); color: var(--navy); border: none; border-radius: 9px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.exp-btn-primary:hover { background: var(--gold2); }
+.exp-btn-secondary { padding: 11px 18px; background: transparent; color: var(--text2); border: 1px solid var(--border); border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.exp-btn-secondary:hover { background: #f4f2ec; color: var(--text); }
 </style>
 </head>
 <body>
@@ -184,6 +228,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 <!-- Access gate — hidden once key is valid -->
 <div class="gate" id="gate">
   <div class="gate-card">
+    <div style="text-align:center;margin-bottom:14px;"><a class="what-trigger" href="#" onclick="event.preventDefault();showExplainer();" style="font-size:13px;"><span class="info-icon">i</span>What is RentalComp?</a></div>
     <div class="gate-logo">Rental<span>Comp</span></div>
     <div class="gate-tagline">Intelligence</div>
     <div id="gate-content">
@@ -205,6 +250,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <header>
   <div class="logo">Rental<span>Comp</span></div>
+  <a class="what-trigger" href="#" onclick="event.preventDefault();showExplainer();" style="margin-left:14px;"><span class="info-icon">i</span>What is this?</a>
   <div class="tagline">Intelligence</div>
 </header>
 
@@ -255,7 +301,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
-      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.10</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.16</span>
     </div>
   </div>
 
@@ -273,6 +319,19 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.16 2026-04-25  Explainer modal: 'What is RentalComp?' trigger at top of gate card +
+                     header link. Sections: pitch, why it matters, 3 steps, sample SVG
+                     Sections: pitch, why it matters (don't be average), 3 steps, sample SVG
+                     Mobile-first full-screen on small screens, centered card on desktop
+                     // Commit: add explainer modal with sample SVG mockup
+   v5.15 2026-04-23  Gate: first + last name fields (mandatory), passed to Worker
+                     // Commit: add name fields to access request gate
+   v5.14 2026-04-21  PDF header: remove gold '25' brand mark, start directly with brand name
+                     // Commit: remove redundant 25 brand mark from PDF header
+   v5.13 2026-04-21  PDF subject card price color: gold → red #c8522a to match Asking tile
+   v5.12 2026-04-21  PDF: remove top 4 tiles (redundant with stats grid), restore asking=red comp=blue
+                     light footer with top rule
+   v5.11 2026-04-21  Canonical report template applied to PDF (letterhead, cards, hero, stats grid)
    v5.10 2026-04-11  Drop pool indicator (not reliably in Rentcast features object — confirmed via DevTools)
                      HOA: show 'not in Rentcast data' when absent so absence is explicit not silent
                      HOA extraction simplified: hoa.fee with hoaFee fallback, no pool logic
@@ -1203,5 +1262,113 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
 });
 </script>
+
+<!-- Explainer modal -->
+<div class="explainer" id="explainer" onclick="if(event.target===this)hideExplainer()">
+  <div class="explainer-card">
+    <button class="exp-close" onclick="hideExplainer()" aria-label="Close">✕</button>
+
+    <div class="exp-hero">
+      <h2>Rental<span>Comp</span> Intelligence</h2>
+      <div class="exp-tagline">For investors who underwrite</div>
+      <div class="exp-pitch">Underwrite rentals smarter — <strong>AI finds the comps, your judgment makes them hold up.</strong></div>
+    </div>
+
+    <div class="exp-body">
+
+      <div class="exp-section">
+        <h3>Why it matters</h3>
+        <div class="exp-why">
+          Most rental estimates blend <em>every listing</em> in the area — luxury, short-term, outliers all averaged in. RentalComp shows you the comps and lets you decide which count.
+          <div class="kicker">Your judgment is the difference — don't be average.</div>
+        </div>
+      </div>
+
+      <div class="exp-section">
+        <h3>How it works</h3>
+        <ol class="exp-steps">
+          <li>Enter any property address</li>
+          <li>See every nearby comp on a map — active and recently closed</li>
+          <li>Exclude irrelevant comps; get a clean rent estimate based on what matters</li>
+        </ol>
+        <div class="exp-bonus"><strong>Plus:</strong> print-ready PDF reports for clients and partners.</div>
+      </div>
+
+      <div class="exp-section">
+        <h3>Sample output</h3>
+        <div class="exp-sample">
+          <svg viewBox="0 0 460 220" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;" preserveAspectRatio="xMidYMid meet">
+            <!-- Map background -->
+            <rect width="460" height="160" fill="#e8efed" rx="6"/>
+            <!-- Simulated streets -->
+            <path d="M 0 50 L 460 60" stroke="#cdd5d2" stroke-width="2" fill="none"/>
+            <path d="M 0 110 L 460 100" stroke="#cdd5d2" stroke-width="2" fill="none"/>
+            <path d="M 110 0 L 130 160" stroke="#cdd5d2" stroke-width="2" fill="none"/>
+            <path d="M 280 0 L 300 160" stroke="#cdd5d2" stroke-width="2" fill="none"/>
+            <path d="M 380 0 L 380 160" stroke="#cdd5d2" stroke-width="1.5" fill="none"/>
+            <!-- Park area -->
+            <rect x="200" y="20" width="60" height="40" fill="#d4e2da" rx="4"/>
+            <!-- Comp pins (active = blue, closed = purple) -->
+            <circle cx="80" cy="40" r="6" fill="#1a4f8c" stroke="#fff" stroke-width="2"/>
+            <circle cx="160" cy="80" r="6" fill="#5c35a0" stroke="#fff" stroke-width="2"/>
+            <circle cx="340" cy="50" r="6" fill="#1a4f8c" stroke="#fff" stroke-width="2"/>
+            <circle cx="80" cy="130" r="6" fill="#5c35a0" stroke="#fff" stroke-width="2"/>
+            <circle cx="380" cy="115" r="6" fill="#5c35a0" stroke="#fff" stroke-width="2"/>
+            <circle cx="240" cy="130" r="6" fill="#bbb" stroke="#fff" stroke-width="2"/>
+            <circle cx="400" cy="35" r="6" fill="#bbb" stroke="#fff" stroke-width="2"/>
+            <!-- Subject pin (red, larger, with pulse ring) -->
+            <circle cx="230" cy="85" r="14" fill="#c8522a" opacity="0.2"/>
+            <circle cx="230" cy="85" r="9" fill="#c8522a" stroke="#fff" stroke-width="3"/>
+            <!-- Subject popup -->
+            <rect x="245" y="55" width="120" height="32" fill="#fff" stroke="#e5e0d8" stroke-width="1" rx="4"/>
+            <text x="252" y="69" font-family="DM Mono,monospace" font-size="10" font-weight="700" fill="#c8522a">$3,475/mo</text>
+            <text x="252" y="81" font-family="DM Sans,sans-serif" font-size="7" fill="#6b6660">Subject · 3bd/2ba</text>
+            <!-- Stats bar -->
+            <rect x="0" y="170" width="460" height="50" fill="#fff" stroke="#e5e0d8" rx="6"/>
+            <text x="14" y="184" font-family="DM Sans,sans-serif" font-size="7" font-weight="700" fill="#9c9690" letter-spacing="1">IN VIEW</text>
+            <text x="14" y="202" font-family="DM Mono,monospace" font-size="13" font-weight="700" fill="#1a1814">12</text>
+            <text x="120" y="184" font-family="DM Sans,sans-serif" font-size="7" font-weight="700" fill="#9c9690" letter-spacing="1">MEDIAN</text>
+            <text x="120" y="202" font-family="DM Mono,monospace" font-size="13" font-weight="700" fill="#1a1814">$3,200</text>
+            <text x="240" y="184" font-family="DM Sans,sans-serif" font-size="7" font-weight="700" fill="#9c9690" letter-spacing="1">RANGE</text>
+            <text x="240" y="202" font-family="DM Mono,monospace" font-size="11" font-weight="700" fill="#1a1814">$2,495–$5,000</text>
+            <text x="370" y="184" font-family="DM Sans,sans-serif" font-size="7" font-weight="700" fill="#9c9690" letter-spacing="1">$/SQFT</text>
+            <text x="370" y="202" font-family="DM Mono,monospace" font-size="13" font-weight="700" fill="#1a1814">$2.17</text>
+            <!-- Legend -->
+            <circle cx="14" cy="11" r="3" fill="#c8522a"/>
+            <text x="22" y="14" font-family="DM Sans,sans-serif" font-size="8" fill="#fff">Subject</text>
+            <circle cx="68" cy="11" r="3" fill="#1a4f8c"/>
+            <text x="76" y="14" font-family="DM Sans,sans-serif" font-size="8" fill="#fff">Active</text>
+            <circle cx="115" cy="11" r="3" fill="#5c35a0"/>
+            <text x="123" y="14" font-family="DM Sans,sans-serif" font-size="8" fill="#fff">Closed</text>
+            <circle cx="166" cy="11" r="3" fill="#bbb"/>
+            <text x="174" y="14" font-family="DM Sans,sans-serif" font-size="8" fill="#fff">Excluded</text>
+          </svg>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="exp-cta">
+      <button class="exp-btn-secondary" onclick="hideExplainer()">Close</button>
+      <button class="exp-btn-primary" onclick="hideExplainer();focusGateForm();">Request Access</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function showExplainer() { document.getElementById('explainer').classList.add('visible'); document.body.style.overflow='hidden'; }
+function hideExplainer() { document.getElementById('explainer').classList.remove('visible'); document.body.style.overflow=''; }
+function focusGateForm() {
+  // If gate is hidden (key valid), nothing to focus — modal closes is enough
+  // If gate visible, focus first field
+  const gate = document.getElementById('gate');
+  if (gate && gate.style.display !== 'none') {
+    setTimeout(()=>{ const f = document.getElementById('gate-first'); if (f) f.focus(); }, 300);
+  }
+}
+// Esc to close
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('explainer').classList.contains('visible')) hideExplainer(); });
+</script>
+
 </body>
 </html>
