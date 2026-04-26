@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.18</title>
+<title>RentalComp Intelligence v5.19</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -215,7 +215,9 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 .exp-steps li::before { content: counter(step); flex-shrink: 0; width: 24px; height: 24px; background: var(--navy); color: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; font-family: var(--mono); }
 .exp-bonus { font-size: 12px; color: var(--text2); font-style: italic; padding: 12px 0 0; border-top: none; }
 .exp-bonus strong { color: var(--navy); font-style: normal; }
-.exp-cta { padding: 16px 28px 24px; border-top: 1px solid #f0ede6; display: flex; gap: 10px; background: #fff; position: sticky; bottom: 0; z-index: 3; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+.exp-cta { padding: 14px 28px 18px; border-top: 1px solid #f0ede6; background: #fff; position: sticky; bottom: 0; z-index: 3; padding-bottom: max(18px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; }
+.exp-cta-buttons { display: flex; gap: 10px; }
+.exp-disclaimer { font-size: 10.5px; line-height: 1.45; color: #8a857d; text-align: center; font-style: italic; padding: 0 4px; }
 .exp-btn-primary { flex: 1; padding: 11px; background: var(--gold); color: var(--navy); border: none; border-radius: 9px; font-size: 13px; font-weight: 700; cursor: pointer; }
 .exp-btn-primary:hover { background: var(--gold2); }
 .exp-btn-secondary { padding: 11px 18px; background: transparent; color: var(--text2); border: 1px solid var(--border); border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer; }
@@ -300,7 +302,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
-      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.18</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.19</span>
     </div>
   </div>
 
@@ -318,6 +320,16 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.19 2026-04-26  Explainer modal: disclaimer footer added inside sticky CTA
+                     container — "RentalComp provides data and analysis tools;
+                     final investment decisions remain with the user." Fills the
+                     dead space below buttons that was visible on iPhone (where
+                     env(safe-area-inset-bottom) reserved space but had no content),
+                     pushing the CTA up into view. Same wording will be reused in
+                     PDF report disclaimer (backlog item).
+                     CSS: .exp-cta now flex-column with .exp-cta-buttons child for
+                     button row + .exp-disclaimer for footer text (10.5px italic).
+                     // Commit: explainer disclaimer footer fixes mobile fold + meets compliance
    v5.18 2026-04-26  Explainer modal mods (5 user-feedback items):
                      1. CTA sticky to bottom on mobile (position:sticky + safe-area-inset)
                         — fixes CTA hiding below fold on phones
@@ -1366,8 +1378,11 @@ document.addEventListener('DOMContentLoaded',()=>{
     </div>
 
     <div class="exp-cta">
-      <button class="exp-btn-secondary" onclick="hideExplainer()">Close</button>
-      <button class="exp-btn-primary" onclick="hideExplainer();focusGateForm();">Request Access</button>
+      <div class="exp-cta-buttons">
+        <button class="exp-btn-secondary" onclick="hideExplainer()">Close</button>
+        <button class="exp-btn-primary" onclick="hideExplainer();focusGateForm();">Request Access</button>
+      </div>
+      <div class="exp-disclaimer">RentalComp provides data and analysis tools; final investment decisions remain with the user.</div>
     </div>
   </div>
 </div>
