@@ -3,6 +3,12 @@
 <head>
 <!--
   RentalComp Admin — admin.html
+  v3.0  2026-04-26  Tier pricing locked: Trial (3/7d/Free), Consult (10/30d/$10),
+                    Investor (50/90d/$25). Investor cap raised 25 → 50.
+                    Buttons simplified to tier-name-only (no inline numbers/prices).
+                    "Consultation" renamed → "Consult" everywhere (tierName lookup
+                    updated for new addressLimit:50 mapping). Pairs with index v5.17.
+                    // Commit: lock v1 pricing tiers, raise Investor cap to 50
   v2.3  2026-04-23  DEV/PROD env banner + one-click env switcher; Name column in requests;
                     Delete bogus request button; Jira lead tracking
                     // Commit: env banner, switcher, name column, delete request, Jira
@@ -150,9 +156,9 @@ async function loadRequests() {
         : '<span class="badge badge-pending">Pending</span>';
       const action = r.status === 'pending'
         ? '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">'
-          + '<button class="btn-green" onclick="approveTier(\''+r.email+'\',3,7)" style="font-size:10px;padding:3px 8px;">Trial<br><span style="font-weight:400;opacity:0.7;">3 · 7d · Free</span></button>'
-          + '<button class="btn-green" onclick="approveTier(\''+r.email+'\',10,30)" style="font-size:10px;padding:3px 8px;">Consultation<br><span style="font-weight:400;opacity:0.7;">10 · 30d · $49</span></button>'
-          + '<button class="btn-green" onclick="approveTier(\''+r.email+'\',25,90)" style="font-size:10px;padding:3px 8px;">Investor<br><span style="font-weight:400;opacity:0.7;">25 · 90d · $99</span></button>'
+          + '<button class="btn-green" onclick="approveTier(\''+r.email+'\',3,7)" style="font-size:11px;padding:4px 12px;">Trial</button>'
+          + '<button class="btn-green" onclick="approveTier(\''+r.email+'\',10,30)" style="font-size:11px;padding:4px 12px;">Consult</button>'
+          + '<button class="btn-green" onclick="approveTier(\''+r.email+'\',50,90)" style="font-size:11px;padding:4px 12px;">Investor</button>'
           + '</div>'
         : '<span style="color:#6b6660;font-size:11px;">Key: '+(r.key||'—')+'</span>';
       const nameStr = [r.firstName, r.lastName].filter(Boolean).join(' ') || '<span style="color:#6b6660;font-style:italic;">—</span>';
@@ -181,7 +187,7 @@ async function loadKeys() {
       const searches = (k.searches||[]);
       const uniqueAddresses = [...new Set(searches.map(s=>s.address))];
       const addressLimit = k.addressLimit || '∞';
-      const tierName = k.addressLimit === 3 ? 'Trial' : k.addressLimit === 10 ? 'Consultation' : k.addressLimit === 25 ? 'Investor' : 'Custom';
+      const tierName = k.addressLimit === 3 ? 'Trial' : k.addressLimit === 10 ? 'Consult' : k.addressLimit === 50 ? 'Investor' : 'Custom';
       const searchCell = uniqueAddresses.length
         ? '<span style="font-size:11px;font-weight:600;">'+uniqueAddresses.length+'/'+addressLimit+'</span> <span style="font-size:10px;color:#c9a84c;">'+tierName+'</span><br>'
           + uniqueAddresses.map(a=>'<span style="font-size:10px;color:#6b6660;display:block;">'+a+'</span>').join('')
@@ -195,7 +201,7 @@ async function loadKeys() {
         : '<div style="display:flex;gap:4px;flex-wrap:wrap;">'
           + '<button class="btn-green" onclick="approveTier(\''+k.email+'\',3,7)" style="font-size:10px;padding:3px 6px;">Trial</button>'
           + '<button class="btn-green" onclick="approveTier(\''+k.email+'\',10,30)" style="font-size:10px;padding:3px 6px;">Consult</button>'
-          + '<button class="btn-green" onclick="approveTier(\''+k.email+'\',25,90)" style="font-size:10px;padding:3px 6px;">Investor</button>'
+          + '<button class="btn-green" onclick="approveTier(\''+k.email+'\',50,90)" style="font-size:10px;padding:3px 6px;">Investor</button>'
           + '</div>';
       const jiraUrl = k.jiraUrl || '';
       const jiraBtnClass = jiraUrl ? 'btn-jira has-link' : 'btn-jira';
