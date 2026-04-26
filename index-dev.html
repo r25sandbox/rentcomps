@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.19</title>
+<title>RentalComp Intelligence v5.20</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -188,12 +188,14 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 .explainer.visible { display: flex; }
 .explainer-card {
   background: #fff; border-radius: 14px; max-width: 520px; width: 100%;
-  max-height: calc(100vh - 40px); overflow-y: auto; position: relative;
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px); /* dvh accounts for floating Safari toolbar; vh fallback above */
+  overflow-y: auto; position: relative;
   box-shadow: 0 12px 60px rgba(0,0,0,0.4);
 }
 @media (max-width: 600px) {
   .explainer { padding: 0; align-items: stretch; }
-  .explainer-card { max-width: 100%; max-height: 100vh; border-radius: 0; }
+  .explainer-card { max-width: 100%; max-height: 100vh; max-height: 100dvh; border-radius: 0; }
 }
 .exp-close { position: absolute; top: 12px; right: 14px; width: 30px; height: 30px; border-radius: 50%; border: none; background: rgba(0,0,0,0.05); color: #6b6660; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; z-index: 2; }
 .exp-close:hover { background: rgba(0,0,0,0.12); color: var(--text); }
@@ -217,7 +219,10 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 .exp-bonus strong { color: var(--navy); font-style: normal; }
 .exp-cta { padding: 14px 28px 18px; border-top: 1px solid #f0ede6; background: #fff; position: sticky; bottom: 0; z-index: 3; padding-bottom: max(18px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; }
 .exp-cta-buttons { display: flex; gap: 10px; }
-.exp-disclaimer { font-size: 10.5px; line-height: 1.45; color: #8a857d; text-align: center; font-style: italic; padding: 0 4px; }
+.exp-disclaimer { font-size: 10.5px; line-height: 1.45; color: #8a857d; text-align: center; font-style: italic; padding: 10px 4px 0; border-top: 1px solid #f0ede6; }
+.exp-contact { font-size: 11px; line-height: 1.4; color: #6b6660; text-align: center; padding: 0 4px; font-weight: 500; }
+.exp-contact a { color: var(--navy); text-decoration: none; font-weight: 600; }
+.exp-contact a:hover { color: var(--gold); }
 .exp-btn-primary { flex: 1; padding: 11px; background: var(--gold); color: var(--navy); border: none; border-radius: 9px; font-size: 13px; font-weight: 700; cursor: pointer; }
 .exp-btn-primary:hover { background: var(--gold2); }
 .exp-btn-secondary { padding: 11px 18px; background: transparent; color: var(--text2); border: 1px solid var(--border); border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer; }
@@ -302,7 +307,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
-      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.19</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.20</span>
     </div>
   </div>
 
@@ -320,6 +325,24 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.20 2026-04-26  iPhone Safari fold fix — buttons were still hidden under
+                     Safari's floating bottom toolbar (which env(safe-area-inset)
+                     does NOT cover, only the home indicator). Two fixes:
+                     1. GEOMETRY: explainer-card max-height changed from
+                        calc(100vh-40px) to calc(100dvh-40px) (with vh fallback);
+                        mobile fullscreen now uses 100dvh too. dvh = dynamic
+                        viewport height, accounts for floating browser chrome.
+                     2. CONTENT: added contact line below disclaimer with email
+                        + phone (mailto/tel links). Pushes CTA buttons higher in
+                        sticky container; also reinforces "real broker not faceless
+                        SaaS" trust signal.
+                     Hairline divider between buttons and disclaimer added via
+                     border-top on .exp-disclaimer (was implicit before).
+                     Disclaimer kept quiet (10.5px italic gray) — louder = looks
+                     like a warning, undermines trust. Rates intentionally NOT
+                     added: explainer is learning mode, limit-reached modal is
+                     pricing mode.
+                     // Commit: dvh + contact line fixes iPhone Safari toolbar fold
    v5.19 2026-04-26  Explainer modal: disclaimer footer added inside sticky CTA
                      container — "RentalComp provides data and analysis tools;
                      final investment decisions remain with the user." Fills the
@@ -1383,6 +1406,7 @@ document.addEventListener('DOMContentLoaded',()=>{
         <button class="exp-btn-primary" onclick="hideExplainer();focusGateForm();">Request Access</button>
       </div>
       <div class="exp-disclaimer">RentalComp provides data and analysis tools; final investment decisions remain with the user.</div>
+      <div class="exp-contact">Questions? <a href="mailto:info@realty25az.com">info@realty25az.com</a> · <a href="tel:+14809202273">480.920.2273</a></div>
     </div>
   </div>
 </div>
