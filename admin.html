@@ -3,6 +3,11 @@
 <head>
 <!--
   RentalComp Admin — admin.html
+  v3.1  2026-04-26  Dead code removal: `magicLink` variable in keys table render
+                    (line 198) was declared but never referenced. Originated from
+                    deprecated URL-param key auth feature, now fully retired in
+                    index-dev v5.21. Pure cleanup — no functional change.
+                    // Commit: remove dead magicLink variable (paired with index v5.21 security pass)
   v3.0  2026-04-26  Tier pricing locked: Trial (3/7d/Free), Consult (10/30d/$10),
                     Investor (50/90d/$25). Investor cap raised 25 → 50.
                     Buttons simplified to tier-name-only (no inline numbers/prices).
@@ -195,7 +200,9 @@ async function loadKeys() {
       const badge = !k.active ? '<span class="badge badge-inactive">Revoked</span>'
         : isExpired ? '<span class="badge badge-expired">Expired</span>'
         : '<span class="badge badge-active">Active</span>';
-      const magicLink = 'https://r25sandbox.github.io/rentcomps/?key='+k.key;
+      // v5.21 (admin v3.1): removed dead `magicLink` variable. URL-param key entry
+      // was deprecated for security (keys must not travel in URLs). Admin distributes
+      // bare key string via email; user pastes into the gate.
       const action = k.active && !isExpired
         ? '<button class="btn-red" onclick="revoke(\''+k.key+'\')">Revoke</button>'
         : '<div style="display:flex;gap:4px;flex-wrap:wrap;">'
