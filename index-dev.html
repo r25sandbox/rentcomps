@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.20</title>
+<title>RentalComp Intelligence v5.21</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -307,7 +307,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
-      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.20</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.21</span>
     </div>
   </div>
 
@@ -325,6 +325,26 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.21 2026-04-26  SECURITY HARDENING — dead-code removal:
+                     1. URL-param key handling removed from initAccess().
+                        Visiting r25sandbox.carrd.co/?key=R25-XXXX no longer
+                        auto-authenticates. Rationale: keys in URLs leak via
+                        browser history, server logs, referrer headers, proxy
+                        logs. Manual-paste flow (submitManualKey) is the only
+                        sanctioned key entry path going forward.
+                     2. validateKey() no longer branches on data.reason
+                        (expired/inactive/not_found). All non-valid responses
+                        return false uniformly. Distinct error states leak
+                        information to attackers attempting to enumerate the
+                        key namespace (oracle behavior). Legit users with
+                        expired/revoked keys reach out via the established
+                        email-first workflow.
+                     3. showExpired() function removed (only caller was the
+                        deleted reason==='expired' branch).
+                     Worker still returns reason + magicLink fields in
+                     responses — harmless, will clean in a future Worker pass.
+                     Pairs with admin v3.1 (dead magicLink variable removed).
+                     // Commit: SECURITY: remove URL-key auth + dead expired flow + leaky reason branching
    v5.20 2026-04-26  iPhone Safari fold fix — buttons were still hidden under
                      Safari's floating bottom toolbar (which env(safe-area-inset)
                      does NOT cover, only the home indicator). Two fixes:
@@ -495,14 +515,11 @@ const WORKER_URL = document.getElementById('api-key') ? document.getElementById(
 let accessKey = null;
 
 async function initAccess() {
-  // Check URL param first
-  const params = new URLSearchParams(window.location.search);
-  const urlKey = params.get('key');
-  if (urlKey) {
-    localStorage.setItem('rc_key', urlKey);
-    // Clean URL without reloading
-    window.history.replaceState({}, '', window.location.pathname);
-  }
+  // NOTE: URL-param key handling (?key=R25-XXXX) was removed in v5.21 for security.
+  // Keys must NOT travel in URLs — they end up in browser history, server logs,
+  // referrer headers, and proxy logs. Manual-paste flow (submitManualKey) is the
+  // only sanctioned key entry path. localStorage caches a previously-validated key
+  // so returning visitors don't need to re-paste, but the key never enters via URL.
   const storedKey = localStorage.getItem('rc_key');
   if (storedKey) {
     const valid = await validateKey(storedKey);
@@ -521,22 +538,13 @@ async function validateKey(key) {
       document.getElementById('gate').style.display = 'none';
       setTimeout(doSearch, 800); // auto-search once unlocked
       return true;
-    } else if (data.reason === 'expired') {
-      showExpired(data.email);
-      return false;
     }
+    // v5.21: Removed branching on data.reason (expired/inactive/not_found).
+    // Distinct error states leak information to attackers (oracle behavior on the
+    // key namespace). Single failure mode = no leak. Legit users with expired/
+    // revoked keys email us per the established email-first workflow.
     return false;
   } catch(e) { return false; }
-}
-
-function showExpired(email) {
-  document.getElementById('gate').style.display = 'flex';
-  document.getElementById('gate-content').innerHTML =
-    '<div class="gate-title" style="color:#f87171;">Access Expired</div>'
-    +'<div class="gate-sub">Your access link has expired. Reach out to discuss opportunities.</div>'
-    +'<div style="margin-top:16px;">'
-    +'<a href="mailto:alik@realty25az.com" style="display:inline-block;padding:10px 20px;background:var(--gold);color:var(--navy);border-radius:9px;font-weight:700;font-size:13px;text-decoration:none;">Contact Alik Levin</a>'
-    +'</div>';
 }
 
 async function requestAccess() {
