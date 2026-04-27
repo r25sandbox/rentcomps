@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.22</title>
+<title>RentalComp Intelligence v5.23</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -309,7 +309,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
-      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.22</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.23</span>
     </div>
   </div>
 
@@ -327,6 +327,34 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.23 2026-04-26  PDF report regression fix — restore canonical template that
+                     was working correctly at v5.12-v5.15. Somewhere between
+                     then and v5.16 the PDF reverted to an older non-canonical
+                     design (full-navy header bar, full-navy footer bar, top
+                     stats tiles redundant above slider, navy left border on
+                     subject card, auto-print on open). All five regressions
+                     fixed in this ship:
+                     1. LETTERHEAD: full navy fill → light/white surface with
+                        3px navy bottom rule. Brand left, broker right. Solid
+                        colors only (no rgba dependent on dark bg).
+                     2. SUBJECT CARD: navy left border → gold #c5a050 (4px),
+                        plus full 1px border + 6px radius per canonical.
+                     3. STATS TILES MOVED: from above the slider (where they
+                        were redundant with the slider's own min/max) to
+                        BELOW the slider as the proper canonical "summary
+                        grid" position. 4-col: In view / Median / Range / $/sqft.
+                     4. ESTIMATE TILES kept above slider unchanged — Asking
+                        red, Comp est blue, Rentcast grey. RentalComp-specific
+                        deviation from calc-canonical (which uses gold/green/red);
+                        confirmed working at v5.12 and not changed here.
+                     5. FOOTER: full navy fill → light surface with 1px top
+                        rule. Solid greys/navy text. Strong word ("Realty 25
+                        AZ") in navy not rgba-on-dark.
+                     6. AUTO-PRINT REMOVED: newWin.print() was firing on load
+                        per canonical "no auto-print" rule. User taps print
+                        themselves — every modern viewer (Chrome/Safari/iOS)
+                        exposes share/print natively from the new tab.
+                     // Commit: PDF report restore canonical template - light header/footer, gold border, tiles below slider, no auto-print
    v5.22 2026-04-26  Pre-prod-promo polish — 4 mods bundled:
                      1. GATE TOGGLE FIX: clicking "Enter it here" left no path
                         back to the Request Access form. Extracted the request
@@ -1294,15 +1322,15 @@ function generateReport() {
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:'DM Sans',sans-serif;color:#1a1814;background:#fff;padding:32px;max-width:900px;margin:0 auto;}
     @media print{body{padding:16px;}@page{margin:16mm;}}
-    .header{background:#0d1b2e;border-radius:10px;padding:20px 24px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;}
-    .brand{font-size:24px;font-weight:700;color:#ffffff;letter-spacing:-0.01em;} .brand span{color:#c9a84c;}
-    .brand-sub{font-size:10px;color:rgba(201,168,76,0.7);text-transform:uppercase;letter-spacing:0.12em;margin-top:2px;}
+    .header{padding:8px 0 18px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #0d1b2e;}
+    .brand{font-size:24px;font-weight:700;color:#0d1b2e;letter-spacing:-0.01em;} .brand span{color:#c9a84c;}
+    .brand-sub{font-size:10px;color:#6b6660;text-transform:uppercase;letter-spacing:0.12em;margin-top:2px;font-weight:600;}
     .header-right{text-align:right;}
-    .header-broker{font-size:13px;font-weight:600;color:#c9a84c;margin-bottom:2px;}
-    .header-contact{font-size:10px;color:rgba(255,255,255,0.55);line-height:1.6;}
-    .header-contact a{color:rgba(201,168,76,0.8);text-decoration:none;}
-    .date{font-size:9px;color:rgba(255,255,255,0.35);margin-top:6px;text-align:right;}
-    .subject-block{background:#f4f2ec;border-left:4px solid #0d1b2e;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:20px;}
+    .header-broker{font-size:13px;font-weight:600;color:#0d1b2e;margin-bottom:2px;}
+    .header-contact{font-size:10px;color:#6b6660;line-height:1.6;}
+    .header-contact a{color:#1a4f8c;text-decoration:none;}
+    .date{font-size:9px;color:#9c9690;margin-top:6px;text-align:right;}
+    .subject-block{background:#f4f2ec;border:1px solid #e5e0d8;border-left:4px solid #c5a050;border-radius:6px;padding:16px 20px;margin-bottom:20px;}
     .s-addr{font-size:15px;font-weight:700;color:#0d1b2e;margin-bottom:4px;}
     .s-meta{font-size:11px;color:#6b6660;margin-bottom:10px;}
     .s-price{font-size:26px;font-weight:700;color:#c8522a;font-family:'DM Mono',monospace;}
@@ -1325,7 +1353,7 @@ function generateReport() {
     td{padding:7px 10px;border-bottom:1px solid #f0ede6;color:#1a1814;}
     tr:nth-child(even) td{background:#faf9f7;}
     tr:last-child td{border-bottom:none;}
-    .footer{margin-top:32px;background:#0d1b2e;border-radius:8px;padding:14px 20px;font-size:9px;color:rgba(255,255,255,0.4);display:flex;justify-content:space-between;align-items:center;} .footer a{color:rgba(201,168,76,0.7);text-decoration:none;}
+    .footer{margin-top:32px;padding:14px 4px 4px;border-top:1px solid #e5e0d8;font-size:9px;color:#9c9690;display:flex;justify-content:space-between;align-items:center;gap:24px;} .footer a{color:#1a4f8c;text-decoration:none;}
   </style>
   </head><body>
   <div class="header">
@@ -1357,13 +1385,6 @@ function generateReport() {
     <div class="s-dom">${currentSubject.dom?currentSubject.dom+' DOM · ':''}Rentcast est: $${currentSubject.rent.toLocaleString()} · Range: $${currentSubject.rentRangeLow.toLocaleString()}–$${currentSubject.rentRangeHigh.toLocaleString()}</div>
   </div>
 
-  <div class="tiles">
-    <div class="tile"><div class="tile-lbl">In view</div><div class="tile-val">${included.length}</div></div>
-    <div class="tile"><div class="tile-lbl">Median rent</div><div class="tile-val">$${median.toLocaleString()}</div></div>
-    <div class="tile"><div class="tile-lbl">Range</div><div class="tile-val" style="font-size:13px;">$${minRent.toLocaleString()}–$${maxRent.toLocaleString()}</div></div>
-    <div class="tile"><div class="tile-lbl">Avg $/sqft</div><div class="tile-val">$${avgPpsf.toFixed(2)}</div></div>
-  </div>
-
   <div class="estimate-tiles">
     <div class="etile"><div class="etile-lbl">Asking</div><div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:#c8522a;">$${subjectPrice.toLocaleString()}</div></div>
     <div class="etile"><div class="etile-lbl">Comp est.</div><div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:#1a4f8c;">$${compEstimate.toLocaleString()}</div></div>
@@ -1380,6 +1401,13 @@ function generateReport() {
     <div class="slider-labels"><span>$${minRent.toLocaleString()}</span><span>$${maxRent.toLocaleString()}</span></div>
   </div>
 
+  <div class="tiles">
+    <div class="tile"><div class="tile-lbl">In view</div><div class="tile-val">${included.length}</div></div>
+    <div class="tile"><div class="tile-lbl">Median rent</div><div class="tile-val">$${median.toLocaleString()}</div></div>
+    <div class="tile"><div class="tile-lbl">Range</div><div class="tile-val" style="font-size:13px;">$${minRent.toLocaleString()}–$${maxRent.toLocaleString()}</div></div>
+    <div class="tile"><div class="tile-lbl">Avg $/sqft</div><div class="tile-val">$${avgPpsf.toFixed(2)}</div></div>
+  </div>
+
   <h2>Included comps (${included.length})</h2>
   <table>
     <thead><tr><th>Address</th><th>Bd/Ba</th><th>Sqft</th><th>Rent</th><th>$/sqft</th><th>DOM</th><th>Status</th><th>Distance</th></tr></thead>
@@ -1389,7 +1417,7 @@ function generateReport() {
   ${excl.length ? '<h2>Excluded comps (' + excl.length + ')</h2><table><thead><tr><th>Address</th><th>Bd/Ba</th><th>Sqft</th><th>Rent</th><th>$/sqft</th><th>DOM</th><th>Status</th><th>Distance</th></tr></thead><tbody>' + exclRows + '</tbody></table>' : ''}
 
   <div class="footer">
-    <span>RentalComp Intelligence &nbsp;·&nbsp; <strong style="color:rgba(255,255,255,0.65);">Realty 25 AZ</strong> &nbsp;·&nbsp; Alik Levin, Broker &nbsp;·&nbsp; <a href="https://realty25az.com">realty25az.com</a> &nbsp;·&nbsp; <a href="mailto:alik@realty25az.com">alik@realty25az.com</a></span>
+    <span>RentalComp Intelligence &nbsp;·&nbsp; <strong style="color:#0d1b2e;">Realty 25 AZ</strong> &nbsp;·&nbsp; Alik Levin, Broker &nbsp;·&nbsp; <a href="https://realty25az.com">realty25az.com</a> &nbsp;·&nbsp; <a href="mailto:alik@realty25az.com">alik@realty25az.com</a></span>
     <span>RentalComp provides data and analysis tools; final investment decisions remain with the user. &nbsp;·&nbsp; Data: Rentcast &nbsp;·&nbsp; Verify on Zillow</span>
   </div>
   </body></html>`;
@@ -1398,14 +1426,15 @@ function generateReport() {
   const blob = new Blob([html], {type:'text/html'});
   const blobUrl = URL.createObjectURL(blob);
   const newWin = window.open(blobUrl, '_blank');
-  if(newWin) {
-    newWin.addEventListener('load', ()=>{ newWin.print(); });
-  } else {
+  if(!newWin) {
     // Popup blocked — force download
     const a = document.createElement('a');
     a.href = blobUrl; a.download = 'RentalComp-Report.html';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }
+  // v5.23: removed newWin.print() auto-trigger per canonical "no auto-print" rule.
+  // User taps print themselves — modern viewers (Chrome/Safari/iOS) all expose
+  // share/print from the new tab natively.
   setTimeout(()=>URL.revokeObjectURL(blobUrl), 60000);
 }
 
