@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.23</title>
+<title>RentalComp Intelligence v5.24</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -309,7 +309,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
-      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.23</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.24</span>
     </div>
   </div>
 
@@ -327,6 +327,15 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.24 2026-04-26  PDF stats grid: 4-col → 3-col canonical. Dropped "Range"
+                     tile because $min–$max is already shown by the slider's
+                     endpoint labels directly above it (visual + numeric
+                     redundancy). Remaining 3 tiles: In view / Median rent /
+                     Avg $/sqft — each independent data point not visible
+                     elsewhere on the page. Bottom grid now mirrors the
+                     3-col estimate-tiles row above the slider for visual
+                     symmetry (3 above + slider + 3 below).
+                     // Commit: PDF stats grid 4col→3col, drop redundant Range tile
    v5.23 2026-04-26  PDF report regression fix — restore canonical template that
                      was working correctly at v5.12-v5.15. Somewhere between
                      then and v5.16 the PDF reverted to an older non-canonical
@@ -1336,7 +1345,7 @@ function generateReport() {
     .s-price{font-size:26px;font-weight:700;color:#c8522a;font-family:'DM Mono',monospace;}
     .s-badge{display:inline-block;background:#dff2e8;color:#2a7a4a;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;margin-left:8px;vertical-align:middle;}
     .s-dom{font-size:11px;color:#6b6660;margin-top:4px;}
-    .tiles{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:16px;}
+    .tiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;}
     .tile{background:#f9f8f5;border:1px solid #e5e0d8;border-radius:8px;padding:10px;text-align:center;}
     .tile-lbl{font-size:8px;text-transform:uppercase;letter-spacing:0.08em;color:#9c9690;font-weight:700;margin-bottom:4px;}
     .tile-val{font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:#1a1814;}
@@ -1404,7 +1413,6 @@ function generateReport() {
   <div class="tiles">
     <div class="tile"><div class="tile-lbl">In view</div><div class="tile-val">${included.length}</div></div>
     <div class="tile"><div class="tile-lbl">Median rent</div><div class="tile-val">$${median.toLocaleString()}</div></div>
-    <div class="tile"><div class="tile-lbl">Range</div><div class="tile-val" style="font-size:13px;">$${minRent.toLocaleString()}–$${maxRent.toLocaleString()}</div></div>
     <div class="tile"><div class="tile-lbl">Avg $/sqft</div><div class="tile-val">$${avgPpsf.toFixed(2)}</div></div>
   </div>
 
