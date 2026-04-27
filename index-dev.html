@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.24</title>
+<title>RentalComp Intelligence v5.25</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -309,7 +309,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
-      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.24</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.25</span>
     </div>
   </div>
 
@@ -327,6 +327,31 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.25 2026-04-26  PDF report — match the gold-standard target screenshot
+                     from previous-chat history (April 22, 2026). Five
+                     structural changes:
+                     1. LETTERHEAD: brand line is now "Realty 25 AZ ·
+                        RentalComp Intelligence" (one row, 15px); broker
+                        contact stacked below as "Alik Levin, Designated
+                        Broker · phone · site" (11px grey). Right side
+                        becomes "Rental Comp Report" + date. 1px hairline
+                        rule under (was 3px).
+                     3. SUBJECT CARD: dropped gold left border, simplified
+                        to white card with 1px border. Address bumped 15→18px,
+                        price 26→30px. Cleaner, less ornament.
+                     4. ESTIMATE TILES: bigger numbers (20→32px), spelled-out
+                        labels ("Asking price", "Comp estimate", "Rentcast
+                        estimate") instead of abbreviated caps. White bg,
+                        label-top-left layout.
+                     5. STATS GRID: restructured from 3-tile single row to
+                        6-tile 2-row grid. Row 1: Rent low / Rent median /
+                        Rent high. Row 2: Comps included / Comps excluded /
+                        Avg $/sqft. More informative breakdown — exposes
+                        excluded-count which was previously hidden, and
+                        breaks the slider's range into discrete data points.
+                        Visual style: shared 1px outer border, internal
+                        cell borders, no gaps between tiles.
+                     // Commit: PDF report match target gold-standard layout from previous chat
    v5.24 2026-04-26  PDF stats grid: 4-col → 3-col canonical. Dropped "Range"
                      tile because $min–$max is already shown by the slider's
                      endpoint labels directly above it (visual + numeric
@@ -1331,27 +1356,27 @@ function generateReport() {
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:'DM Sans',sans-serif;color:#1a1814;background:#fff;padding:32px;max-width:900px;margin:0 auto;}
     @media print{body{padding:16px;}@page{margin:16mm;}}
-    .header{padding:8px 0 18px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #0d1b2e;}
-    .brand{font-size:24px;font-weight:700;color:#0d1b2e;letter-spacing:-0.01em;} .brand span{color:#c9a84c;}
-    .brand-sub{font-size:10px;color:#6b6660;text-transform:uppercase;letter-spacing:0.12em;margin-top:2px;font-weight:600;}
+    .header{padding:8px 0 18px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #d4ccb8;}
+    .brand{font-size:15px;color:#0d1b2e;letter-spacing:0;font-weight:500;} .brand strong{color:#0d1b2e;font-weight:700;} .brand span{color:#c9a84c;font-weight:700;}
+    .brand-sub{font-size:11px;color:#6b6660;margin-top:4px;font-weight:400;}
     .header-right{text-align:right;}
-    .header-broker{font-size:13px;font-weight:600;color:#0d1b2e;margin-bottom:2px;}
-    .header-contact{font-size:10px;color:#6b6660;line-height:1.6;}
-    .header-contact a{color:#1a4f8c;text-decoration:none;}
-    .date{font-size:9px;color:#9c9690;margin-top:6px;text-align:right;}
-    .subject-block{background:#f4f2ec;border:1px solid #e5e0d8;border-left:4px solid #c5a050;border-radius:6px;padding:16px 20px;margin-bottom:20px;}
-    .s-addr{font-size:15px;font-weight:700;color:#0d1b2e;margin-bottom:4px;}
-    .s-meta{font-size:11px;color:#6b6660;margin-bottom:10px;}
-    .s-price{font-size:26px;font-weight:700;color:#c8522a;font-family:'DM Mono',monospace;}
+    .header-broker{font-size:15px;font-weight:700;color:#0d1b2e;margin-bottom:2px;}
+    .date{font-size:11px;color:#6b6660;margin-top:2px;text-align:right;}
+    .subject-block{background:#fff;border:1px solid #e5e0d8;border-radius:6px;padding:18px 22px;margin-bottom:20px;}
+    .s-addr{font-size:18px;font-weight:700;color:#0d1b2e;margin-bottom:6px;}
+    .s-meta{font-size:12px;color:#6b6660;margin-bottom:12px;}
+    .s-price{font-size:30px;font-weight:700;color:#c8522a;font-family:'DM Mono',monospace;letter-spacing:-0.02em;}
     .s-badge{display:inline-block;background:#dff2e8;color:#2a7a4a;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;margin-left:8px;vertical-align:middle;}
     .s-dom{font-size:11px;color:#6b6660;margin-top:4px;}
-    .tiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;}
-    .tile{background:#f9f8f5;border:1px solid #e5e0d8;border-radius:8px;padding:10px;text-align:center;}
-    .tile-lbl{font-size:8px;text-transform:uppercase;letter-spacing:0.08em;color:#9c9690;font-weight:700;margin-bottom:4px;}
-    .tile-val{font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:#1a1814;}
-    .estimate-tiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;}
-    .etile{background:#f9f8f5;border:1px solid #e5e0d8;border-radius:8px;padding:10px;text-align:center;}
-    .etile-lbl{font-size:8px;text-transform:uppercase;letter-spacing:0.08em;color:#9c9690;font-weight:700;margin-bottom:4px;}
+    .tiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-bottom:16px;border:1px solid #e5e0d8;border-radius:6px;overflow:hidden;}
+    .tile{background:#fff;padding:12px 18px;text-align:left;border-right:1px solid #e5e0d8;border-bottom:1px solid #e5e0d8;}
+    .tile:nth-child(3n){border-right:none;}
+    .tile:nth-last-child(-n+3){border-bottom:none;}
+    .tile-lbl{font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:#6b6660;font-weight:600;margin-bottom:4px;}
+    .tile-val{font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:#0d1b2e;}
+    .estimate-tiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;}
+    .etile{background:#fff;border:1px solid #e5e0d8;border-radius:6px;padding:14px 18px;text-align:left;}
+    .etile-lbl{font-size:11px;letter-spacing:0;color:#6b6660;font-weight:500;margin-bottom:6px;text-transform:none;}
     .slider-wrap{background:#f9f8f5;border:1px solid #e5e0d8;border-radius:8px;padding:12px 16px;margin-bottom:20px;}
     .slider-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:10px;color:#9c9690;}
     .slider-labels{display:flex;justify-content:space-between;margin-top:6px;font-size:9px;color:#9c9690;}
@@ -1367,16 +1392,12 @@ function generateReport() {
   </head><body>
   <div class="header">
     <div>
-      <div class="brand">Rental<span>Comp</span> Intelligence</div>
-      <div class="brand-sub">Realty 25 AZ</div>
+      <div class="brand"><strong>Realty 25 AZ</strong> &nbsp;·&nbsp; Rental<span>Comp</span> Intelligence</div>
+      <div class="brand-sub">Alik Levin, Designated Broker &nbsp;·&nbsp; 480.920.2273 &nbsp;·&nbsp; <a href="https://realty25az.com" style="color:inherit;text-decoration:none;">realty25az.com</a></div>
     </div>
     <div class="header-right">
-      <div class="header-broker">Alik Levin, Broker</div>
-      <div class="header-contact">
-        <a href="https://realty25az.com">realty25az.com</a> &nbsp;·&nbsp;
-        <a href="mailto:alik@realty25az.com">alik@realty25az.com</a>
-      </div>
-      <div class="date">Report generated ${date}</div>
+      <div class="header-broker">Rental Comp Report</div>
+      <div class="date">${date}</div>
     </div>
   </div>
 
@@ -1395,9 +1416,9 @@ function generateReport() {
   </div>
 
   <div class="estimate-tiles">
-    <div class="etile"><div class="etile-lbl">Asking</div><div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:#c8522a;">$${subjectPrice.toLocaleString()}</div></div>
-    <div class="etile"><div class="etile-lbl">Comp est.</div><div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:#1a4f8c;">$${compEstimate.toLocaleString()}</div></div>
-    <div class="etile"><div class="etile-lbl">Rentcast</div><div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:#6b6660;">$${currentSubject.rent.toLocaleString()}</div></div>
+    <div class="etile"><div class="etile-lbl">Asking price</div><div style="font-size:32px;font-weight:700;font-family:'DM Mono',monospace;color:#c8522a;letter-spacing:-0.02em;">$${subjectPrice.toLocaleString()}</div></div>
+    <div class="etile"><div class="etile-lbl">Comp estimate</div><div style="font-size:32px;font-weight:700;font-family:'DM Mono',monospace;color:#1a4f8c;letter-spacing:-0.02em;">$${compEstimate.toLocaleString()}</div></div>
+    <div class="etile"><div class="etile-lbl">Rentcast estimate</div><div style="font-size:32px;font-weight:700;font-family:'DM Mono',monospace;color:#6b6660;letter-spacing:-0.02em;">$${currentSubject.rent.toLocaleString()}</div></div>
   </div>
 
   <div class="slider-wrap">
@@ -1411,8 +1432,11 @@ function generateReport() {
   </div>
 
   <div class="tiles">
-    <div class="tile"><div class="tile-lbl">In view</div><div class="tile-val">${included.length}</div></div>
-    <div class="tile"><div class="tile-lbl">Median rent</div><div class="tile-val">$${median.toLocaleString()}</div></div>
+    <div class="tile"><div class="tile-lbl">Rent low</div><div class="tile-val">$${minRent.toLocaleString()}</div></div>
+    <div class="tile"><div class="tile-lbl">Rent median</div><div class="tile-val">$${median.toLocaleString()}</div></div>
+    <div class="tile"><div class="tile-lbl">Rent high</div><div class="tile-val">$${maxRent.toLocaleString()}</div></div>
+    <div class="tile"><div class="tile-lbl">Comps included</div><div class="tile-val">${included.length}</div></div>
+    <div class="tile"><div class="tile-lbl">Comps excluded</div><div class="tile-val">${excl.length}</div></div>
     <div class="tile"><div class="tile-lbl">Avg $/sqft</div><div class="tile-val">$${avgPpsf.toFixed(2)}</div></div>
   </div>
 
