@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RentalComp Intelligence v5.25</title>
+<title>RentalComp Intelligence v5.26</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -168,6 +168,10 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 .gate-logo { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 6px; }
 .gate-logo span { color: var(--gold); }
 .gate-tagline { font-size: 11px; color: rgba(255,255,255,0.35); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 24px; }
+.gate-tabs { display: flex; gap: 4px; padding: 4px; background: rgba(0,0,0,0.25); border-radius: 10px; margin-bottom: 20px; }
+.gate-tab { flex: 1; padding: 9px 12px; border: none; background: transparent; color: #8a857d; font-size: 12px; font-weight: 600; border-radius: 7px; cursor: pointer; transition: background 0.15s, color 0.15s; font-family: inherit; letter-spacing: 0.02em; }
+.gate-tab:hover:not(.active) { color: #c5beb1; }
+.gate-tab.active { background: var(--gold); color: var(--navy); }
 .gate-title { font-size: 15px; font-weight: 600; color: #e5e0d8; margin-bottom: 8px; }
 .gate-sub { font-size: 12px; color: #6b6660; margin-bottom: 20px; line-height: 1.6; }
 .gate-input { width: 100%; padding: 10px 14px; border: 1px solid #2a3a50; border-radius: 9px; background: #0d1b2e; color: #e5e0d8; font-size: 13px; margin-bottom: 10px; outline: none; }
@@ -239,9 +243,12 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
     <div style="text-align:center;margin-bottom:14px;"><a class="what-trigger" href="#" onclick="event.preventDefault();showExplainer();" style="font-size:13px;"><span class="info-icon">i</span>What is RentalComp?</a></div>
     <div class="gate-logo">Rental<span>Comp</span></div>
     <div class="gate-tagline">Intelligence</div>
+    <div class="gate-tabs" id="gate-tabs">
+      <button class="gate-tab active" id="tab-request" onclick="showRequestForm()">Request Access</button>
+      <button class="gate-tab" id="tab-key" onclick="showKeyEntry()">Enter Key</button>
+    </div>
     <div id="gate-content">
-      <div class="gate-title">Request Access</div>
-      <div class="gate-sub">Enter your details and we'll reach out with your access link.</div>
+      <div class="gate-sub">Enter your details. We'll review your request and send your access key.</div>
       <div style="display:flex;gap:8px;">
         <input class="gate-input" type="text" id="gate-first" placeholder="First name" style="margin-bottom:0;" />
         <input class="gate-input" type="text" id="gate-last" placeholder="Last name" style="margin-bottom:0;" />
@@ -249,9 +256,6 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <input class="gate-input" type="email" id="gate-email" placeholder="your@email.com" style="margin-top:10px;" />
       <button class="gate-btn" onclick="requestAccess()">Request Access</button>
       <div class="gate-msg" id="gate-msg"></div>
-    </div>
-    <div class="gate-footer">
-      <span id="gate-footer-link">Have an access key? <a href="#" onclick="event.preventDefault();showKeyEntry()">Enter it here</a></span>
     </div>
   </div>
 </div>
@@ -309,7 +313,7 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
       <span><span class="ldot" style="background:var(--blue);"></span>Active</span>
       <span><span class="ldot" style="background:var(--purple);"></span>Closed</span>
       <span><span class="ldot" style="background:#bbb;"></span>Excluded</span>
-      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.25</span>
+      <span style="margin-left:auto;opacity:0.35;font-size:9px;letter-spacing:0.05em;">v5.26</span>
     </div>
   </div>
 
@@ -327,6 +331,38 @@ header { background: var(--navy); border-bottom: 2px solid var(--gold); padding:
 
 <script>
 /* RentalComp Intelligence — Changelog
+   v5.26 2026-04-26  Three RentalComp mods bundled:
+                     1. COMP ESTIMATE BUG FIX: previous formula
+                        `compEstimate = avgPpsf × subjectSqft` produced answers
+                        BELOW the lowest included rent when comp set had varied
+                        sqft. Reported by user 2026-05-03 with 1,250 sqft subject
+                        getting compEst=$1,982 vs lowest included rent $2,195.
+                        Root cause: averaging $/sqft across a size-mixed set
+                        biases the per-sqft figure (small units have artificially
+                        high $/sqft, large have low; mixing them and then
+                        applying to subject's specific sqft distorts).
+                        Fix: simple average of included rents in BOTH places
+                        (live UI line ~1180 + PDF generation line ~1314).
+                        Decision rationale: user manually curates the comp set.
+                        Estimator should faithfully report what THEY chose, not
+                        silently statistically-filter on top. The product
+                        positioning ("AI does grunt work, human does the fine
+                        tuning") demands the math respect human curation.
+                     2. COPY FIX: "we'll reach out with your access link" →
+                        "we'll review your request and send your access key" in
+                        all three places: static initial render, showRequestForm()
+                        regen path, and the already_approved success message.
+                        Dead-wood from earlier magic-link flow (deprecated v5.21).
+                     3. GATE TAB UI: replaced single primary form + buried
+                        "Have an access key? Enter it here" link with a 2-tab
+                        toggle (Request Access | Enter Key) at top of card.
+                        Active tab = gold pill, navy text. Default lands on
+                        Request Access for first-time visitors. setGateTab()
+                        helper centralizes active-state. Removed gate-footer
+                        link (tabs replace it) and gate-title (tabs ARE the
+                        title). Reported as buried-key-entry by user via real
+                        iPhone screenshot.
+                     // Commit: comp estimate avg-of-included + access-key copy + gate tabs
    v5.25 2026-04-26  PDF report — match the gold-standard target screenshot
                      from previous-chat history (April 22, 2026). Five
                      structural changes:
@@ -661,7 +697,7 @@ async function requestAccess() {
       document.getElementById('gate-email').disabled = true;
       document.querySelector('.gate-btn').disabled = true;
     } else if (data.status === 'already_approved') {
-      msg.style.color='#fcd34d'; msg.textContent='Your email is approved — check your inbox for the access link.';
+      msg.style.color='#fcd34d'; msg.textContent='Your email is approved — check your inbox for your access key.';
     } else if (data.status === 'already_requested') {
       msg.style.color='#fcd34d'; msg.textContent='Already requested — we\'ll reach out soon.';
     }
@@ -670,10 +706,24 @@ async function requestAccess() {
   }
 }
 
+function setGateTab(active) {
+  // active: 'request' or 'key' — toggles .active class on the tab buttons
+  var tReq = document.getElementById('tab-request');
+  var tKey = document.getElementById('tab-key');
+  if (!tReq || !tKey) return;
+  if (active === 'request') {
+    tReq.classList.add('active');
+    tKey.classList.remove('active');
+  } else {
+    tKey.classList.add('active');
+    tReq.classList.remove('active');
+  }
+}
+
 function showRequestForm() {
+  setGateTab('request');
   document.getElementById('gate-content').innerHTML =
-    '<div class="gate-title">Request Access</div>'
-    +'<div class="gate-sub">Enter your details and we\'ll reach out with your access link.</div>'
+    '<div class="gate-sub">Enter your details. We\'ll review your request and send your access key.</div>'
     +'<div style="display:flex;gap:8px;">'
     +'<input class="gate-input" type="text" id="gate-first" placeholder="First name" style="margin-bottom:0;" />'
     +'<input class="gate-input" type="text" id="gate-last" placeholder="Last name" style="margin-bottom:0;" />'
@@ -681,21 +731,15 @@ function showRequestForm() {
     +'<input class="gate-input" type="email" id="gate-email" placeholder="your@email.com" style="margin-top:10px;" />'
     +'<button class="gate-btn" onclick="requestAccess()">Request Access</button>'
     +'<div class="gate-msg" id="gate-msg"></div>';
-  // Sync the bottom link too — flip back to "have a key"
-  var footer = document.getElementById('gate-footer-link');
-  if (footer) footer.innerHTML = 'Have an access key? <a href="#" onclick="event.preventDefault();showKeyEntry()">Enter it here</a>';
 }
 
 function showKeyEntry() {
+  setGateTab('key');
   document.getElementById('gate-content').innerHTML =
-    '<div class="gate-title">Enter Access Key</div>'
-    +'<div class="gate-sub">Paste your access key below.</div>'
+    '<div class="gate-sub">Paste your access key below.</div>'
     +'<input class="gate-input" type="text" id="manual-key" placeholder="R25-XXXXXXXX" />'
     +'<button class="gate-btn" onclick="submitManualKey()">Unlock</button>'
     +'<div class="gate-msg" id="gate-msg"></div>';
-  // v5.22: flip the bottom link to offer the way back to the request form
-  var footer = document.getElementById('gate-footer-link');
-  if (footer) footer.innerHTML = 'Need a key? <a href="#" onclick="event.preventDefault();showRequestForm()">Request access</a>';
 }
 
 async function submitManualKey() {
@@ -1176,12 +1220,16 @@ function updateCompEstimate(included, median, minRent, maxRent) {
 
   const subjectPrice = currentSubject.askingPrice || currentSubject.rent;
   const rcEstimate = currentSubject.rent;
-  const withSqft = included.filter(c=>c.squareFootage && c.price);
-  let compEstimate = median;
-  if(withSqft.length && currentSubject.squareFootage) {
-    const avgPpsf = withSqft.reduce((a,c)=>a+(c.price/c.squareFootage),0)/withSqft.length;
-    compEstimate = Math.round(avgPpsf * currentSubject.squareFootage);
-  }
+  // v5.26: Comp estimate = simple average of included rents.
+  // Rationale: user manually curates the comp set via include/exclude.
+  // Estimator should faithfully report what they chose, not silently filter.
+  // Previous formula (avgPpsf × subjectSqft) produced estimates BELOW the lowest
+  // included rent when comps had varied sqft (smaller-comp economics applied to
+  // average-of-mixed-sqft per-sqft rate). Reported by user 2026-05-03 with a
+  // 1,250 sqft subject getting compEst=$1,982 vs lowest included rent $2,195.
+  const compEstimate = included.length > 0
+    ? Math.round(included.reduce((s,c) => s + c.price, 0) / included.length)
+    : median;
 
   const gap = subjectPrice - compEstimate;
   const gapPct = compEstimate > 0 ? (gap / compEstimate) * 100 : 0;
@@ -1309,9 +1357,16 @@ function generateReport() {
   const median = rents.length%2===0 ? Math.round((rents[mid-1]+rents[mid])/2) : rents[mid];
   const minRent = Math.min(...rents);
   const maxRent = Math.max(...rents);
+  // v5.26: PDF Comp estimate = same formula as live UI — simple average of
+  // included rents. See live UI block for full rationale.
+  // avgPpsf still computed below ONLY because it's still displayed in the
+  // stats grid as "Avg $/sqft" — that's a legitimate per-sqft data point;
+  // it just shouldn't be back-applied to subject sqft to derive compEstimate.
   const withSqft = included.filter(c=>c.squareFootage);
   const avgPpsf = withSqft.length ? withSqft.reduce((a,c)=>a+(c.price/c.squareFootage),0)/withSqft.length : 0;
-  const compEstimate = (avgPpsf && currentSubject.squareFootage) ? Math.round(avgPpsf*currentSubject.squareFootage) : median;
+  const compEstimate = included.length > 0
+    ? Math.round(included.reduce((s,c) => s + c.price, 0) / included.length)
+    : median;
   const subjectPrice = currentSubject.askingPrice || currentSubject.rent;
   const gap = subjectPrice - compEstimate;
   const gapPct = compEstimate > 0 ? (gap/compEstimate)*100 : 0;
